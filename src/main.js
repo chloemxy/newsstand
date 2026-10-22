@@ -7,6 +7,9 @@ import { Magazine, Newspaper, setAnisotropy } from './items.js';
 import { buildPlaceholder } from './stands.js';
 import { loadModel } from './model.js';
 import { Reader } from './reader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { setMaterialAnisotropy } from './materials.js';
+import { makePost } from './post.js';
 
 const canvas = document.getElementById('scene');
 const loading = document.getElementById('loading');
@@ -17,13 +20,18 @@ async function start() {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.VSMShadowMap;
   renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = 1;
+  renderer.toneMappingExposure = 0.95;
   setAnisotropy(renderer.capabilities.getMaxAnisotropy());
+  setMaterialAnisotropy(renderer.capabilities.getMaxAnisotropy());
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#ffffff');
+  scene.background = new THREE.Color('#f6f4ef');
+  // a soft studio room for chrome and enamel to reflect
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environmentIntensity = 0.3;
 
   const camera = new THREE.PerspectiveCamera(40, 1, 0.02, 50);
   camera.position.fromArray(CONFIG.camera);
@@ -38,17 +46,21 @@ async function start() {
   controls.minPolarAngle = o.minPolar; controls.maxPolarAngle = o.maxPolar;
 
   if (CONFIG.defaultLights) {
-    scene.add(new THREE.HemisphereLight('#ffffff', '#e4e1da', 2.2));
-    const sun = new THREE.DirectionalLight('#fffaf2', 1.6);
-    sun.position.set(1.8, 3.5, 2.6);
+    scene.add(new THREE.HemisphereLight('#fffaf0', '#d8d2c6', 0.35));
+    // warm key light from the upper right, like a shop window
+    const sun = new THREE.DirectionalLight('#fff1dc', 2.4);
+    sun.position.set(1.8, 3.4, 2.4);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(sun.shadow.camera, { left: -2, right: 2, top: 2.5, bottom: -0.5, near: 0.5, far: 8 });
-    sun.shadow.bias = -0.0004;
-    sun.shadow.normalBias = 0.02;
+    Object.assign(sun.shadow.camera, { left: -1.6, right: 1.6, top: 2.3, bottom: -0.3, near: 0.5, far: 8 });
+    sun.shadow.radius = 6;
+    sun.shadow.blurSamples = 16;
+    sun.shadow.bias = -0.0002;
+    sun.shadow.normalBias = 0.01;
     scene.add(sun);
-    const fill = new THREE.PointLight('#ffffff', 0.4, 6);
-    fill.position.set(-2, 1.6, 1.5);
+    // cool fill from the left so the shadow side isn't flat
+    const fill = new THREE.DirectionalLight('#dfe8ff', 0.5);
+    fill.position.set(-2.5, 1.8, 1.5);
     scene.add(fill);
   }
 
@@ -82,6 +94,7 @@ async function start() {
   place(newspapers, slots.newspapers, Newspaper);
 
   const reader = new Reader({ camera, controls, canvas, items });
+  const post = makePost(renderer, scene, camera);
   window.kiosk = { scene, camera, controls, reader, items }; // handy in the devtools console
 
   // Frame the stands, centred in the space between the top bar and the
@@ -112,6 +125,7 @@ async function start() {
   function resize() {
     const w = innerWidth, h = innerHeight;
     renderer.setSize(w, h, false);
+    post.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (reader.state === 'idle') frameScene();
@@ -125,7 +139,7 @@ async function start() {
     const dt = Math.min(clock.getDelta(), 0.05);
     if (controls.enabled) controls.update();
     reader.update(dt);
-    renderer.render(scene, camera);
+    post.render();
   });
 
   loading.classList.add('done');
