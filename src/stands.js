@@ -169,7 +169,7 @@ function newspaperLadder(mats) {
   // where the photo-style camera aims: a point at rung depth, in this stand's space
   g.userData.shotFocus = (x, y) => new THREE.Vector3(x, y, rungZ(y));
   // a slot on each rung's axis; the paper brings its own rod, sized to the stand
-  const rod = { half: X + 0.03, sleeveX: LW / 2 - 0.03, wood: mats.hinoki, sleeve: mats.sleeve };
+  const rod = { half: X + 0.03, sleeveX: LW / 2 - 0.03, metal: mats.steel, sleeve: mats.sleeve };
   rungs.forEach(([x, y, z], i) => {
     const sl = slot(`slot_newspaper_${String(i + 1).padStart(2, '0')}`, g, x, y, z, deg(-4));
     sl.userData.rod = rod;

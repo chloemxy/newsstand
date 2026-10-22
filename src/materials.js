@@ -149,6 +149,11 @@ export function makeMaterials() {
       roughness: 0.88,
       bumpMap: texture(fine, { repeat: [8, 8] }), bumpScale: 0.25,
     }),
+    // brushed steel for the newspaper rods: fine lengthwise streaks
+    steel: new THREE.MeshStandardMaterial({
+      color: '#c6c9cb', metalness: 1, roughness: 1,
+      roughnessMap: texture(range(noise(256, 53, [[4, 0.3], [256, 0.7]]), 0.22, 0.42), { repeat: [1, 8] }),
+    }),
     // dark zinc screws and washers
     iron: new THREE.MeshStandardMaterial({ color: '#4b4c4c', metalness: 0.85, roughness: 0.4 }),
     // pink-lavender plastic sleeves on the rod ends, as in the photo. Opaque:

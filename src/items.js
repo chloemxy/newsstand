@@ -172,8 +172,10 @@ function sheetGeometry(layer, W, H) {
   const outer = SHEETS - 1 - layer; // 0 = innermost sheet
   const rHang = DOWEL_R + 0.0008 + outer * 0.0004;
   const rFlat = 0.0004 + outer * 0.0005;
-  const bow = 0.003 + layer * 0.0004;   // sag away from the rod
-  const curl = 0.006 + layer * 0.0008;  // the free edge lifts a little
+  // the outer sheets bow and curl the most, so inner sheets never push
+  // through the printed outer one
+  const bow = 0.0018 + outer * 0.0005;  // sag away from the rod
+  const curl = 0.0035 + outer * 0.001;  // the free edge lifts a little
   const S = 28, A = 18, X = 6;          // segments: each half, the fold, across
 
   // path down the sheet: [hangY, hangZ, flatY, flatZ, u, half]; half 0 = front
@@ -223,7 +225,7 @@ function sheetGeometry(layer, W, H) {
 
 const defaultRod = {
   half: 0.25, sleeveX: 0.19,
-  wood: new THREE.MeshStandardMaterial({ color: '#e8d4b4', roughness: 0.7 }),
+  metal: new THREE.MeshStandardMaterial({ color: '#c9cccd', metalness: 1, roughness: 0.32 }),
   sleeve: new THREE.MeshStandardMaterial({ color: '#cdb0c4', roughness: 0.35 }),
 };
 
@@ -236,7 +238,9 @@ export class Newspaper {
     this.spread = 0;
     this.cache = new Map();
     this.mount = new THREE.Vector3(0, 0, 0);          // the slot sits on the rod's axis
-    this.hoverLift = new THREE.Vector3(0, 0.012, 0.02); // lifts off its blocks
+    // on hover the paper lifts off its blocks and comes clear of the stack:
+    // the papers below sit up to ~5 cm further forward, so it must clear them
+    this.hoverLift = new THREE.Vector3(0, 0.015, 0.06);
     this.readQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
 
     this.root = new THREE.Group();
@@ -244,8 +248,8 @@ export class Newspaper {
     this.rodHalf = rod.half;
     this.readFill = 0.72; // held further back than a magazine, rod and all in view
 
-    // the rod and its sleeves travel with the paper
-    const rodMesh = new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R, DOWEL_R, rod.half * 2, 20).rotateZ(Math.PI / 2), rod.wood);
+    // the steel rod and its sleeves travel with the paper
+    const rodMesh = new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R, DOWEL_R, rod.half * 2, 24).rotateZ(Math.PI / 2), rod.metal);
     this.root.add(rodMesh);
     for (const s of [-1, 1]) {
       const sl = new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R + 0.0022, DOWEL_R + 0.0022, 0.045, 20).rotateZ(Math.PI / 2), rod.sleeve);
