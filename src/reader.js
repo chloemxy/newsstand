@@ -253,7 +253,7 @@ export class Reader {
       const goal = it === this.hovered ? 1 : 0;
       if (Math.abs(it.hover - goal) < 0.001) continue;
       it.hover += (goal - it.hover) * k;
-      it.root.position.set(it.mount.x, it.mount.y + 0.008 * it.hover, it.mount.z + 0.03 * it.hover);
+      it.root.position.copy(it.mount).addScaledVector(it.hoverLift, it.hover);
     }
     const m = this.dim.material;
     m.opacity += (this.dimTarget - m.opacity) * (1 - Math.exp(-dt * 8));

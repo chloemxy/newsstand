@@ -48,6 +48,7 @@ export class Magazine {
     this.spread = 0;
     this.cache = new Map();
     this.mount = new THREE.Vector3(0, H / 2, T / 2);
+    this.hoverLift = new THREE.Vector3(0, 0.008, 0.03); // up and out of the shelf
 
     this.root = new THREE.Group();
     this.root.name = `magazine_${data.id}`;
@@ -159,6 +160,7 @@ export class Newspaper {
     this.spread = 0;
     this.cache = new Map();
     this.mount = new THREE.Vector3(0, H / 2, T * 1.5);
+    this.hoverLift = new THREE.Vector3(0, 0, 0.045); // straight out of the stack
 
     this.root = new THREE.Group();
     this.root.name = `newspaper_${data.id}`;

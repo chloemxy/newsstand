@@ -6,7 +6,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { collectSlots } from './stands.js';
 
-export async function loadModel(url, scene, cameraName) {
+export async function loadModel(url, scene, cameraName, focusName) {
   const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
   const root = gltf.scene;
   root.traverse((o) => {
@@ -17,5 +17,6 @@ export async function loadModel(url, scene, cameraName) {
   });
   scene.add(root);
   const camera = gltf.cameras.find((c) => c.name === cameraName) || null;
-  return { slots: collectSlots(root), camera };
+  const focus = root.getObjectByName(focusName) || root;
+  return { slots: collectSlots(root), camera, focus };
 }

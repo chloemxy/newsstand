@@ -9,11 +9,14 @@ export const CONFIG = {
   // Turn off once your model carries its own (or baked) lighting.
   defaultLights: true,
 
-  // Where the camera looks and how far people may orbit.
-  target: [-0.42, 0.92, 0],
-  camera: [-0.42, 1.15, 2.7],
-  // the area that should fit on screen at the start, in metres
-  sceneWidth: 2.9,
-  sceneHeight: 2.4,
-  orbit: { minAzimuth: -0.6, maxAzimuth: 0.6, minPolar: 1.05, maxPolar: 1.62, minDistance: 1.4, maxDistance: 3.4 },
+  // The camera looks from `camera` toward `target`; only the direction
+  // matters, the distance is fitted to the screen so the stands are centred.
+  target: [0, 0.9, 0],
+  camera: [0, 1.15, 2.7],
+
+  // In a GLB, the node to frame (e.g. an Empty parenting the stands).
+  // Without it the whole model is framed.
+  focusName: 'focus',
+
+  orbit: { minAzimuth: -0.6, maxAzimuth: 0.6, minPolar: 1.05, maxPolar: 1.62 },
 };

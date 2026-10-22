@@ -95,8 +95,8 @@ function newspaperLadder() {
   return g;
 }
 
-// Builds the room and both stands. Returns slots found by name, the same
-// way loadModel() does for a GLB.
+// Builds the room and both stands. Returns the slots, found by name the same
+// way loadModel() does for a GLB, and the group the camera should frame.
 export function buildPlaceholder(scene) {
   const room = new THREE.Group();
   room.name = 'placeholder';
@@ -111,9 +111,12 @@ export function buildPlaceholder(scene) {
   rack.position.set(-0.5, 0, 0);
   const ladder = newspaperLadder();
   ladder.position.set(0.42, 0, 0);
-  room.add(rack, ladder);
+  const stands = new THREE.Group();
+  stands.name = 'focus';
+  stands.add(rack, ladder);
+  room.add(stands);
   scene.add(room);
-  return collectSlots(room);
+  return { slots: collectSlots(room), focus: stands };
 }
 
 export function collectSlots(root) {

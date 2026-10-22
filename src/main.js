@@ -36,7 +36,6 @@ async function start() {
   const o = CONFIG.orbit;
   controls.minAzimuthAngle = o.minAzimuth; controls.maxAzimuthAngle = o.maxAzimuth;
   controls.minPolarAngle = o.minPolar; controls.maxPolarAngle = o.maxPolar;
-  controls.minDistance = o.minDistance; controls.maxDistance = o.maxDistance;
 
   if (CONFIG.defaultLights) {
     scene.add(new THREE.HemisphereLight('#ffffff', '#e4e1da', 2.2));
@@ -53,19 +52,20 @@ async function start() {
     scene.add(fill);
   }
 
-  let slots;
+  // the direction the camera looks from; the distance is worked out to fit
+  const viewDir = new THREE.Vector3().fromArray(CONFIG.camera).sub(controls.target).normalize();
+
+  let slots, focus;
   if (CONFIG.modelUrl) {
-    const model = await loadModel(CONFIG.modelUrl, scene, CONFIG.cameraName);
-    slots = model.slots;
+    const model = await loadModel(CONFIG.modelUrl, scene, CONFIG.cameraName, CONFIG.focusName);
+    ({ slots, focus } = model);
     if (model.camera) {
       model.camera.updateWorldMatrix(true, false);
-      model.camera.getWorldPosition(camera.position);
-      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(model.camera.getWorldQuaternion(new THREE.Quaternion()));
-      controls.target.copy(camera.position).addScaledVector(fwd, 2.5);
+      viewDir.set(0, 0, 1).applyQuaternion(model.camera.getWorldQuaternion(new THREE.Quaternion()));
       if (model.camera.isPerspectiveCamera) camera.fov = model.camera.fov;
     }
   } else {
-    slots = buildPlaceholder(scene);
+    ({ slots, focus } = buildPlaceholder(scene));
   }
 
   const items = [];
@@ -84,21 +84,37 @@ async function start() {
   const reader = new Reader({ camera, controls, canvas, items });
   window.kiosk = { scene, camera, controls, reader, items }; // handy in the devtools console
 
+  // Frame the stands, centred in the space between the top bar and the
+  // text at the bottom, on any screen size.
+  focus.updateWorldMatrix(true, true);
+  const bounds = new THREE.Box3().setFromObject(focus);
+  const centre = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+
+  function frameScene() {
+    const vw = innerWidth, vh = innerHeight;
+    const gutter = vw < 600 ? 16 : 32;
+    const top = document.querySelector('.bar').getBoundingClientRect().bottom + gutter;
+    const bottom = Math.min(...['.intro', '.index'].map((q) => document.querySelector(q).getBoundingClientRect().top)) - gutter;
+    const availW = (vw - 2 * gutter) / vw;
+    const availH = Math.max(0.35, (bottom - top) / vh);
+    const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
+    const d = Math.max(size.x / 2 / (tanH * camera.aspect * availW), size.y / 2 / (tanH * availH)) + size.z / 2;
+    // move the aim down so the stands sit in the middle of the free space
+    const lift = (vh / 2 - (top + bottom) / 2) / vh * 2 * d * tanH;
+    controls.target.copy(centre).add(new THREE.Vector3(0, -lift, 0));
+    camera.position.copy(controls.target).addScaledVector(viewDir, d);
+    controls.minDistance = d * 0.55;
+    controls.maxDistance = d * 1.25;
+    controls.update();
+  }
+
   function resize() {
     const w = innerWidth, h = innerHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    // back the camera off until the whole set fits the width
-    if (controls.enabled) {
-      const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
-      // portrait screens frame one stand and let people drag to the other
-      const width = camera.aspect < 1 ? CONFIG.sceneWidth * 0.62 : CONFIG.sceneWidth;
-      const fit = Math.max(width / 2 / (tanH * camera.aspect), CONFIG.sceneHeight / 2 / tanH * (camera.aspect < 1 ? 0 : 1));
-      const dir = camera.position.clone().sub(controls.target).normalize();
-      controls.maxDistance = Math.max(CONFIG.orbit.maxDistance, fit * 1.1);
-      camera.position.copy(controls.target).addScaledVector(dir, fit);
-    }
+    if (reader.state === 'idle') frameScene();
     reader.onResize();
   }
   addEventListener('resize', resize);

@@ -4,7 +4,7 @@
     {
       "name": "newsstand",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "4517"],
+      "runtimeArgs": ["serve.py"],
       "port": 4517,
       "autoPort": false
     }

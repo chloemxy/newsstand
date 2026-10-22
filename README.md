@@ -6,13 +6,13 @@ The visual style follows [frontoffice.co](https://frontoffice.co): white paper, 
 
 ## Run it locally
 
-There's no build step, but ES modules need a local server:
+There's no build step, but ES modules need a local server. `serve.py` is a tiny one that turns off browser caching, so your edits always show:
 
 ```bash
-python -m http.server 4517
+python serve.py
 ```
 
-Then open http://localhost:4517. `npx serve -l 4517` works too.
+Then open http://localhost:4517.
 
 ## Files
 
@@ -25,6 +25,7 @@ Then open http://localhost:4517. `npx serve -l 4517` works too.
 | `src/stands.js` | Placeholder stands and slot lookup |
 | `src/model.js` | Loads a `.glb` stand model and finds its slots |
 | `src/textures.js` | Paints covers and pages onto canvases |
+| `serve.py` | No-cache local server |
 | `models/README.md` | How to export the Blender model and name the slots |
 
 ## Adding the real model
