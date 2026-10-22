@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CONFIG } from './config.js';
 import { magazines, newspapers } from './content.js';
 import { loadFonts } from './textures.js';
@@ -10,9 +9,12 @@ import { Reader } from './reader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { setMaterialAnisotropy } from './materials.js';
 import { makePost } from './post.js';
+import { ContactShadow } from './contact-shadow.js';
 
 const canvas = document.getElementById('scene');
 const loading = document.getElementById('loading');
+
+const studio = CONFIG.look === 'studio';
 
 async function start() {
   await loadFonts();
@@ -27,30 +29,31 @@ async function start() {
   setMaterialAnisotropy(renderer.capabilities.getMaxAnisotropy());
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#ead5bd');
+  // studio: a seamless paper sweep, lighter at the top, with no horizon line
+  scene.background = studio ? studioBackdrop() : new THREE.Color('#ead5bd');
   // a soft room for the oiled wood to catch highlights from
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.22;
+  scene.environmentIntensity = studio ? 0.5 : 0.22;
 
-  const camera = new THREE.PerspectiveCamera(40, 1, 0.02, 50);
-  camera.position.fromArray(CONFIG.camera);
+  const shot = CONFIG.shot;
+  const camera = new THREE.PerspectiveCamera(shot.fov, 1, 0.02, 80);
   scene.add(camera); // the held item and the dimmer ride along with it
 
-  const controls = new OrbitControls(camera, canvas);
-  controls.target.fromArray(CONFIG.target);
-  controls.enableDamping = true;
-  controls.enablePan = false;
-  const o = CONFIG.orbit;
-  controls.minAzimuthAngle = o.minAzimuth; controls.maxAzimuthAngle = o.maxAzimuth;
-  controls.minPolarAngle = o.minPolar; controls.maxPolarAngle = o.maxPolar;
+  // The view is fixed, so there are no orbit controls; the reader only
+  // needs to know whether the camera is free (it never moves anyway).
+  const controls = { enabled: true };
 
-  if (CONFIG.defaultLights) addLights(scene);
+  if (CONFIG.defaultLights) (studio ? addStudioLights : addSunsetLights)(scene);
 
   // the direction the camera looks from; the distance is worked out to fit
-  const viewDir = new THREE.Vector3().fromArray(CONFIG.camera).sub(controls.target).normalize();
+  const viewDir = new THREE.Vector3(
+    Math.sin(shot.azimuth) * Math.cos(shot.elevation),
+    Math.sin(shot.elevation),
+    Math.cos(shot.azimuth) * Math.cos(shot.elevation),
+  );
 
-  let slots, focus;
+  let slots, focus, shotFocus;
   if (CONFIG.modelUrl) {
     const model = await loadModel(CONFIG.modelUrl, scene, CONFIG.cameraName, CONFIG.focusName);
     ({ slots, focus } = model);
@@ -60,7 +63,7 @@ async function start() {
       if (model.camera.isPerspectiveCamera) camera.fov = model.camera.fov;
     }
   } else {
-    ({ slots, focus } = buildPlaceholder(scene));
+    ({ slots, focus, shotFocus } = buildPlaceholder(scene, { magazines: CONFIG.showMagazines, room: !studio }));
   }
 
   const items = [];
@@ -73,36 +76,34 @@ async function start() {
     slot.add(item.root);
     items.push(item);
   });
-  place(magazines, slots.magazines, Magazine);
+  if (CONFIG.modelUrl || CONFIG.showMagazines) place(magazines, slots.magazines, Magazine);
   place(newspapers, slots.newspapers, Newspaper);
 
-  const reader = new Reader({ camera, controls, canvas, items });
+  focus.updateWorldMatrix(true, true);
+  const bounds = new THREE.Box3().setFromObject(focus);
+  const reader = new Reader({ camera, controls, canvas, items, bounds });
   const post = makePost(renderer, scene, camera);
   window.kiosk = { scene, camera, controls, reader, items }; // handy in the devtools console
 
-  // Frame the stands, centred in the space between the top bar and the
-  // text at the bottom, on any screen size.
-  focus.updateWorldMatrix(true, true);
-  const bounds = new THREE.Box3().setFromObject(focus);
   const centre = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
 
+  // no floor in the studio, so a soft contact shadow grounds the stand
+  const contact = studio ? new ContactShadow(renderer, scene, {
+    center: centre, width: size.x + 1.2, depth: size.z + 1.0,
+  }) : null;
+
+  // The aim point: the shot's focus on the newspaper stand, or the middle of
+  // a loaded model.
+  const aim = shotFocus ? shotFocus(...shot.focus) : centre;
+
+  // Fixed framing, like the photo: `span` metres across the shorter side of
+  // the screen, aimed at the focus point.
   function frameScene() {
-    const vw = innerWidth, vh = innerHeight;
-    const gutter = vw < 600 ? 16 : 32;
-    const top = document.querySelector('.bar').getBoundingClientRect().bottom + gutter;
-    const bottom = Math.min(...['.intro', '.index'].map((q) => document.querySelector(q).getBoundingClientRect().top)) - gutter;
-    const availW = (vw - 2 * gutter) / vw;
-    const availH = Math.max(0.35, (bottom - top) / vh);
     const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
-    const d = Math.max(size.x / 2 / (tanH * camera.aspect * availW), size.y / 2 / (tanH * availH)) + size.z / 2;
-    // move the aim down so the stands sit in the middle of the free space
-    const lift = (vh / 2 - (top + bottom) / 2) / vh * 2 * d * tanH;
-    controls.target.copy(centre).add(new THREE.Vector3(0, -lift, 0));
-    camera.position.copy(controls.target).addScaledVector(viewDir, d);
-    controls.minDistance = d * 0.45;
-    controls.maxDistance = d * 1.3;
-    controls.update();
+    const d = shot.span / 2 / tanH / Math.min(1, camera.aspect);
+    camera.position.copy(aim).addScaledVector(viewDir, d);
+    camera.lookAt(aim);
   }
 
   function resize() {
@@ -120,8 +121,8 @@ async function start() {
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
     const dt = Math.min(clock.getDelta(), 0.05);
-    if (controls.enabled) controls.update();
     reader.update(dt);
+    contact?.update();
     post.render();
   });
 
@@ -129,10 +130,51 @@ async function start() {
   setTimeout(() => loading.remove(), 400);
 }
 
+// Studio softbox light, like the reference product photo: a large soft key
+// from the front left, a gentle fill from the right, a rim from behind to
+// lift the stand off the backdrop.
+function addStudioLights(scene) {
+  scene.add(new THREE.HemisphereLight('#ffffff', '#e6e1d8', 0.8));
+
+  const key = new THREE.DirectionalLight('#fff8ef', 2.2);
+  key.position.set(-1.8, 2.8, 3.4);
+  key.castShadow = true; // self-shadowing: rungs and papers onto the board
+  key.shadow.mapSize.setScalar(innerWidth < 700 ? 1024 : 2048);
+  Object.assign(key.shadow.camera, { left: -1, right: 1, top: 2.1, bottom: -0.2, near: 0.5, far: 10 });
+  key.shadow.radius = 4;
+  key.shadow.bias = -0.0004;
+  key.shadow.normalBias = 0.02;
+  scene.add(key);
+
+  const fill = new THREE.DirectionalLight('#f1f4ff', 0.7);
+  fill.position.set(2.4, 1.3, 2.6);
+  scene.add(fill);
+
+  const rim = new THREE.DirectionalLight('#ffffff', 0.6);
+  rim.position.set(0.6, 2.6, -2.4);
+  scene.add(rim);
+}
+
+// A vertical gradient, light at the top and slightly deeper at the bottom,
+// like a lit paper sweep in a photo studio.
+function studioBackdrop() {
+  const c = document.createElement('canvas');
+  c.width = 4; c.height = 512;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0, '#f7f7f5');
+  g.addColorStop(0.55, '#efeeeb');
+  g.addColorStop(1, '#dfddd8');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 4, 512);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 // Sunset through a shoji screen: a low orange sun from the right throwing
 // long shadows across the room, the screen's lattice stretched over the
 // wall, a dusky blue sky fill from the left.
-function addLights(scene) {
+function addSunsetLights(scene) {
   scene.add(new THREE.HemisphereLight('#b8b3c4', '#b98a62', 0.4));
 
   const sun = new THREE.DirectionalLight('#ffa35e', 3.2);

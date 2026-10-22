@@ -11,8 +11,9 @@ const WIDE = 900;
 const $ = (id) => document.getElementById(id);
 
 export class Reader {
-  constructor({ camera, controls, canvas, items }) {
-    Object.assign(this, { camera, controls, canvas, items });
+  constructor({ camera, controls, canvas, items, bounds }) {
+    // bounds: the stands' box, so a held item always sits in front of them
+    Object.assign(this, { camera, controls, canvas, items, bounds });
     this.state = 'idle';
     this.held = null;
     this.hovered = null;
@@ -133,7 +134,16 @@ export class Reader {
     const viewH = 2 * d * tanH, viewW = viewH * this.camera.aspect;
     const sx = ((free.l + free.r) / 2 / vw - 0.5) * viewW;
     const sy = (0.5 - (free.t + free.b) / 2 / vh) * viewH;
-    return { position: new THREE.Vector3(sx - f.cx, sy - f.cy, -d), quaternion: new THREE.Quaternion(), d };
+    const position = new THREE.Vector3(sx - f.cx, sy - f.cy, -d);
+    // With a close camera the stand can be nearer than that. Then hold the
+    // item closer and smaller by the same factor, so it looks the same size
+    // but never slips behind a post.
+    const near = this.bounds ? this.bounds.distanceToPoint(this.camera.position) : Infinity;
+    const k = Math.min(1, (near * 0.8) / d);
+    position.multiplyScalar(k);
+    // the dimmer goes between the held item and the stand
+    const dimZ = -Math.min(d * k + 0.15, Math.max(d * k + 0.005, near * 0.95));
+    return { position, quaternion: new THREE.Quaternion(), d: d * k, scale: k, dimZ };
   }
 
   async pick(item, opener) {
@@ -152,7 +162,7 @@ export class Reader {
     this.camera.attach(root);
     const p0 = root.position.clone(), q0 = root.quaternion.clone(), s0 = root.scale.clone();
     const to = this.heldPose(item);
-    this.dim.position.z = -to.d - 0.15;
+    this.dim.position.z = to.dimZ;
     this.dim.visible = true;
     this.dimTarget = 0.85;
 
@@ -160,7 +170,7 @@ export class Reader {
       root.position.lerpVectors(p0, to.position, k);
       root.position.y += Math.sin(Math.PI * k) * 0.04;
       root.quaternion.slerpQuaternions(q0, to.quaternion, k);
-      root.scale.lerpVectors(s0, new THREE.Vector3(1, 1, 1), k);
+      root.scale.lerpVectors(s0, new THREE.Vector3().setScalar(to.scale), k);
     });
     await item.open();
     this.showPanel();
@@ -244,7 +254,8 @@ export class Reader {
     if (this.state !== 'reading' || !this.held) return;
     const to = this.heldPose(this.held);
     this.held.root.position.copy(to.position);
-    this.dim.position.z = -to.d - 0.15;
+    this.held.root.scale.setScalar(to.scale);
+    this.dim.position.z = to.dimZ;
   }
 
   update(dt) {

@@ -165,48 +165,59 @@ function newspaperLadder(mats) {
 
   const g = k.build('newspaper_ladder');
   g.userData.boardZ = boardZ(0.03); // where its board meets the base, to line it up
+  // where the photo-style camera aims: a point at rung depth, in this stand's space
+  g.userData.shotFocus = (x, y) => new THREE.Vector3(x, y, rungZ(y));
   // slot at the paper's left edge, half way down; +Y turned to point right
   at.forEach(([x, y, z], i) => slot(`slot_newspaper_${String(i + 1).padStart(2, '0')}`, g, x, y, z, deg(-3.4), deg(-90)));
   return g;
 }
 
-// Builds the room and both stands. Returns the slots, found by name the same
-// way loadModel() does for a GLB, and the group the camera should frame.
-export function buildPlaceholder(scene) {
+// Builds the stands, and optionally a room around them. Returns the slots,
+// found by name the same way loadModel() does for a GLB, and the group the
+// camera should frame.
+//   magazines: false leaves the magazine shelf out; the ladder stands alone
+//   room: false skips walls and floor, for the seamless studio backdrop
+export function buildPlaceholder(scene, { magazines = true, room: withRoom = true } = {}) {
   const mats = makeMaterials();
   const room = new THREE.Group();
   room.name = 'placeholder';
 
-  // the room is large enough that orbiting never takes the camera through a wall
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), mats.floor);
-  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
-  const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), mats.wall);
-  wall.position.set(0, 2.5, -0.5); wall.receiveShadow = true;
-  // side walls close the room, so swinging the view shows a corner, not a void
-  const side = (x) => {
-    const w = new THREE.Mesh(new THREE.PlaneGeometry(12, 5), mats.wall);
-    w.rotation.y = -Math.sign(x) * Math.PI / 2;
-    w.position.set(x, 2.5, 5.5); w.receiveShadow = true;
-    return w;
-  };
-  room.add(floor, wall, side(-6), side(6));
+  if (withRoom) {
+    // the room is large enough that orbiting never takes the camera through a wall
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), mats.floor);
+    floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(14, 5), mats.wall);
+    wall.position.set(0, 2.5, -0.5); wall.receiveShadow = true;
+    // side walls close the room, so swinging the view shows a corner, not a void
+    const side = (x) => {
+      const w = new THREE.Mesh(new THREE.PlaneGeometry(12, 5), mats.wall);
+      w.rotation.y = -Math.sign(x) * Math.PI / 2;
+      w.position.set(x, 2.5, 5.5); w.receiveShadow = true;
+      return w;
+    };
+    room.add(floor, wall, side(-6), side(6));
+  }
 
-  // both stands on one line: back boards in the same plane, bases flush,
-  // a single even gap between them
+  // stands on one line: back boards in the same plane, bases flush, a single
+  // even gap between them; a lone stand sits at the centre
   const LINE_Z = -0.1, GAP = 0.3;
-  const rack = magazineRack(mats);
-  const ladder = newspaperLadder(mats);
-  const rackW = 0.62 + 0.12 + 0.02, ladderW = 0.38 + 0.12 + 0.02; // base slab widths
-  const left = -(rackW + GAP + ladderW) / 2;
-  rack.position.set(left + rackW / 2, 0, LINE_Z - rack.userData.boardZ);
-  ladder.position.set(left + rackW + GAP + ladderW / 2, 0, LINE_Z - ladder.userData.boardZ);
+  const row = [];
+  if (magazines) row.push([magazineRack(mats), 0.62 + 0.12 + 0.02]); // base slab widths
+  row.push([newspaperLadder(mats), 0.38 + 0.12 + 0.02]);
+  let x = -(row.reduce((w, [, rw]) => w + rw, 0) + GAP * (row.length - 1)) / 2;
 
   const stands = new THREE.Group();
   stands.name = 'focus';
-  stands.add(rack, ladder);
+  for (const [stand, w] of row) {
+    stand.position.set(x + w / 2, 0, LINE_Z - stand.userData.boardZ);
+    x += w + GAP;
+    stands.add(stand);
+  }
   room.add(stands);
   scene.add(room);
-  return { slots: collectSlots(room), focus: stands };
+  const ladder = row.at(-1)[0];
+  const shotFocus = (x, y) => ladder.localToWorld(ladder.userData.shotFocus(x, y));
+  return { slots: collectSlots(room), focus: stands, shotFocus };
 }
 
 export function collectSlots(root) {

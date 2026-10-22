@@ -2,7 +2,7 @@
 
 An interactive 3D newsstand built with three.js. Click a magazine or newspaper to pick it up. Magazines open to a spread and newspapers unfold, and you can turn pages and put them back. The stands are grey-box placeholders until the real Blender model is added.
 
-The visual style follows [frontoffice.co](https://frontoffice.co): white paper, black ink, hairline rules, a light flared serif and a tracked grotesk. The stands are quiet Japanese joinery: hinoki uprights and dowels on smoked oak boards, lit by a low sunset through a shoji screen. The newspaper stand is a ladder where each paper drapes over a rung. See `fonts.css` for the typefaces and how to add the licensed originals.
+The visual style follows [frontoffice.co](https://frontoffice.co): white paper, black ink, hairline rules, a light flared serif and a tracked grotesk. The stands are quiet Japanese joinery: hinoki uprights and dowels on smoked oak boards, shot like a product photograph on a seamless studio backdrop (or, with `look: 'room'`, in a room at sunset). The newspaper stand is a ladder where each paper drapes over a rung. See `fonts.css` for the typefaces and how to add the licensed originals.
 
 ## Run it locally
 
@@ -25,6 +25,7 @@ Then open http://localhost:4517.
 | `src/stands.js` | Placeholder stands in hinoki and smoked oak, and slot lookup |
 | `src/materials.js` | Procedural finishes: wood grain, steel, frosted sleeves, plaster, stone |
 | `src/post.js` | Tone mapping, film grain and vignette |
+| `src/contact-shadow.js` | Soft contact shadow under the stand on the studio backdrop |
 | `src/model.js` | Loads a `.glb` stand model and finds its slots |
 | `src/textures.js` | Paints covers and pages onto canvases |
 | `serve.py` | No-cache local server |
@@ -36,7 +37,7 @@ Export the stands as `models/newsstand.glb` with slot Empties named `slot_magazi
 
 ## Controls
 
-- Drag to look around, then click an item to pick it up.
+- The view is a fixed camera, set up like a product photo (`shot` in `src/config.js`). Click a paper to pick it up.
 - Click the right or left half of the item, or press → / ←, to turn pages.
 - Press Esc or click outside the item to put it back.
 - "Browse the stand" lists every item for keyboard users.
