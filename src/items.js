@@ -240,8 +240,10 @@ export class Newspaper {
     this.spread = 0;
     this.cache = new Map();
     this.mount = new THREE.Vector3(0, 0, 0);          // the slot sits on the rod's axis
-    // on hover one end of the rod lifts off its block (see applyHover())
-    this.hoverLift = new THREE.Vector3(0, 0, 0.012);
+    // on hover one end of the rod lifts off its block (see applyHover()); the
+    // paper stays at its depth in the stack, so the papers in front of it
+    // still partly cover it
+    this.hoverLift = new THREE.Vector3(0, 0, 0);
     this.readQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
 
     this.root = new THREE.Group();
@@ -307,7 +309,8 @@ export class Newspaper {
   }
 
   // Hover: the right end of the rod lifts off its block while the left end
-  // stays put as a pivot, so the paper tips up from one side. h runs 0..1.
+  // stays put as a pivot, so the paper tips up from one side, in place.
+  // h runs 0..1.
   applyHover(h) {
     const a = 0.13 * h, r = this.rodHalf;
     this.root.position.set(this.mount.x - r + r * Math.cos(a), this.mount.y + r * Math.sin(a), this.mount.z + this.hoverLift.z * h);
