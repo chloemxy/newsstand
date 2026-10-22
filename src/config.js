@@ -18,5 +18,6 @@ export const CONFIG = {
   // Without it the whole model is framed.
   focusName: 'focus',
 
-  orbit: { minAzimuth: -0.6, maxAzimuth: 0.6, minPolar: 1.05, maxPolar: 1.62 },
+  // how far a click-and-drag can swing the view (radians)
+  orbit: { minAzimuth: -0.9, maxAzimuth: 0.9, minPolar: 0.95, maxPolar: 1.62 },
 };

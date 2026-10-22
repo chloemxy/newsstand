@@ -1,63 +1,66 @@
-// Placeholder stands, styled as mid-century newsstand fixtures: bent steel
-// tube in green enamel, chrome wire shelves and rungs, brass ball ends,
-// rubber feet and enamel signs. They expose the same slots a GLB would
-// (see models/README.md), so swapping in the real model is a config change.
+// Placeholder stands in wood, after the reference photo, with a quiet
+// Japanese finish: pale hinoki uprights, ledges and dowels, a smoked oak
+// back board on split base slabs, small spacer blocks under each dowel,
+// frosted sleeves and blackened bolts. They expose the same slots a GLB
+// would (see models/README.md), so swapping in the real model is a config
+// change.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { NEWS } from './items.js';
 import { makeMaterials } from './materials.js';
-import { paintEnamelSign } from './textures.js';
 
 const deg = THREE.MathUtils.degToRad;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const UP = V(0, 1, 0);
+const TILE = { u: 0.25, v: 1 }; // metres covered by one tile of the grain texture
 
-// Collects geometry per material and merges it, so hundreds of wires and
-// tubes draw as a handful of meshes.
+// Collects geometry per material and merges it, so every board, block and
+// dowel of a stand draws as a handful of meshes. UVs are scaled to real
+// size so the grain is the same density on a thin dowel and a wide board.
 class Kit {
-  constructor(mats) { this.mats = mats; this.parts = new Map(); }
+  constructor() { this.parts = new Map(); this.seed = 1; }
 
   add(geo, mat) {
     if (!this.parts.has(mat)) this.parts.set(mat, []);
     this.parts.get(mat).push(geo);
   }
 
-  // straight rod between two points
-  rod(a, b, r, mat) {
-    const dir = b.clone().sub(a);
-    const g = new THREE.CylinderGeometry(r, r, dir.length(), 14, 1);
-    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP, dir.clone().normalize()));
+  offset() { this.seed = (this.seed * 9301 + 49297) % 233280; return this.seed / 233280; }
+
+  // a squared timber from a to b; `across` sets which way its width runs
+  beam(a, b, width, depth, mat, across = V(1, 0, 0)) {
+    const L = b.clone().sub(a);
+    const len = L.length();
+    L.normalize();
+    const W = across.clone().sub(L.clone().multiplyScalar(across.dot(L))).normalize();
+    const D = W.clone().cross(L);
+    const g = new THREE.BoxGeometry(width, len, depth);
+    // faces: +x, -x, +y, -y, +z, -z, four vertices each
+    const dims = [[depth, len], [depth, len], [width, depth], [width, depth], [width, len], [width, len]];
+    const uv = g.attributes.uv, du = this.offset(), dv = this.offset();
+    for (let f = 0; f < 6; f++) for (let i = f * 4; i < f * 4 + 4; i++) {
+      uv.setXY(i, uv.getX(i) * dims[f][0] / TILE.u + du, uv.getY(i) * dims[f][1] / TILE.v + dv);
+    }
+    g.applyMatrix4(new THREE.Matrix4().makeBasis(W, L, D).setPosition(a.clone().add(b).multiplyScalar(0.5)));
+    this.add(g, mat);
+  }
+
+  // a round dowel from a to b
+  dowel(a, b, r, mat, segments = 20) {
+    const L = b.clone().sub(a), len = L.length();
+    const g = new THREE.CylinderGeometry(r, r, len, segments, 1);
+    const uv = g.attributes.uv, du = this.offset();
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (2 * Math.PI * r) / TILE.u + du, uv.getY(i) * len / TILE.v);
+    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), L.normalize()));
     g.translate(...a.clone().add(b).multiplyScalar(0.5).toArray());
     this.add(g, mat);
   }
 
-  // tube through points with rounded corners, like bent steel
-  bent(points, r, bend, mat) {
-    const path = new THREE.CurvePath();
-    let prev = points[0].clone();
-    for (let i = 1; i < points.length - 1; i++) {
-      const a = points[i - 1], b = points[i], c = points[i + 1];
-      const ab = b.clone().sub(a), bc = c.clone().sub(b);
-      const p1 = b.clone().sub(ab.normalize().multiplyScalar(Math.min(bend, a.distanceTo(b) / 2)));
-      const p2 = b.clone().add(bc.normalize().multiplyScalar(Math.min(bend, b.distanceTo(c) / 2)));
-      path.add(new THREE.LineCurve3(prev, p1));
-      path.add(new THREE.QuadraticBezierCurve3(p1, b.clone(), p2));
-      prev = p2;
-    }
-    path.add(new THREE.LineCurve3(prev, points.at(-1).clone()));
-    this.add(new THREE.TubeGeometry(path, points.length * 40, r, 14, false), mat);
-  }
-
-  ball(p, r, mat) {
-    const g = new THREE.SphereGeometry(r, 16, 12);
+  // a bolt head on a face, pointing along `normal`
+  bolt(p, normal, mat) {
+    const g = new THREE.CylinderGeometry(0.0065, 0.0065, 0.004, 16);
+    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), normal));
     g.translate(p.x, p.y, p.z);
-    this.add(g, mat);
-  }
-
-  foot(p, mat) {
-    const g = new THREE.CylinderGeometry(0.016, 0.019, 0.022, 16);
-    g.translate(p.x, p.y + 0.011, p.z);
     this.add(g, mat);
   }
 
@@ -73,17 +76,6 @@ class Kit {
   }
 }
 
-function sign(text, w, mats) {
-  const t = new THREE.CanvasTexture(paintEnamelSign(text));
-  t.colorSpace = THREE.SRGBColorSpace;
-  const face = mats.enamelSheet.clone();
-  face.map = t;
-  const h = w * 224 / 1024;
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.006), [mats.enamel, mats.enamel, mats.enamel, mats.enamel, face, mats.enamel]);
-  m.castShadow = true;
-  return m;
-}
-
 function slot(name, parent, x, y, z, rx = 0, rz = 0) {
   const s = new THREE.Object3D();
   s.name = name;
@@ -93,93 +85,84 @@ function slot(name, parent, x, y, z, rx = 0, rz = 0) {
   return s;
 }
 
-// Wire magazine rack: one bent frame, three wire shelves with chrome lips,
-// a wire back and an enamel sign on top.
+const POST = 0.035;
+
+// split base slabs, as in the photo
+function base(k, mats, halfW, z, depth) {
+  k.beam(V(-halfW, 0.015, z), V(-0.003, 0.015, z), depth, 0.03, mats.oak, V(0, 0, 1));
+  k.beam(V(0.003, 0.015, z), V(halfW, 0.015, z), depth, 0.03, mats.oak, V(0, 0, 1));
+}
+
+// Magazine shelf in the same language: hinoki posts in front of an oak
+// board, three hinoki ledges, a dowel lip on spacer blocks for each tier.
 function magazineRack(mats) {
-  const k = new Kit(mats);
-  const X = 0.33, back = -0.13, top = 1.66, r = 0.012;
+  const k = new Kit();
+  const RW = 0.62, X = RW / 2 + POST / 2, H = 1.62;
+  const boardZ = -0.1, postZ = boardZ + 0.008 + POST / 2 + 0.001;
 
-  // the frame is one tube: front foot, back, up, across the top, down, front foot
-  k.bent([V(-X, 0.03, 0.17), V(-X, 0.03, back), V(-X, top, back), V(X, top, back), V(X, 0.03, back), V(X, 0.03, 0.17)], r, 0.07, mats.enamel);
-  k.rod(V(-X, 0.03, back), V(-X, 0.03, back - 0.12), r, mats.enamel);
-  k.rod(V(X, 0.03, back), V(X, 0.03, back - 0.12), r, mats.enamel);
-  for (const p of [V(-X, 0.008, 0.17), V(X, 0.008, 0.17), V(-X, 0.008, back - 0.12), V(X, 0.008, back - 0.12)]) k.foot(p, mats.rubber);
-
-  // wire back
-  for (let x = -X + 0.05; x < X - 0.02; x += 0.055) k.rod(V(x, 0.12, back + 0.004), V(x, top - 0.06, back + 0.004), 0.0025, mats.chrome);
-  for (const y of [0.12, 0.5, 0.95, 1.4, top - 0.06]) k.rod(V(-X, y, back + 0.008), V(X, y, back + 0.008), 0.003, mats.chrome);
+  base(k, mats, RW / 2 + 0.06, -0.04, 0.22);
+  k.beam(V(0, 0.03, boardZ), V(0, 1.48, boardZ), RW + 0.04, 0.016, mats.oak);
+  for (const s of [-1, 1]) {
+    k.beam(V(s * X, 0.03, postZ), V(s * X, H, postZ), POST, POST, mats.hinoki);
+    for (const y of [0.18, 0.62, 1.06]) k.bolt(V(s * X, y, postZ + POST / 2 + 0.002), V(0, 0, 1), mats.iron);
+  }
 
   for (const y of [1.2, 0.76, 0.32]) {
-    // shelf: front and back bars, wires front to back, angled brackets to the frame
-    k.rod(V(-X, y - 0.012, 0.008), V(X, y - 0.012, 0.008), 0.007, mats.enamel);
-    k.rod(V(-X, y - 0.012, back), V(X, y - 0.012, back), 0.007, mats.enamel);
-    for (let x = -X + 0.03; x < X - 0.01; x += 0.032) k.rod(V(x, y - 0.004, back), V(x, y - 0.004, 0.008), 0.0025, mats.chrome);
-    for (const s of [-1, 1]) k.rod(V(s * X, y - 0.012, 0.008), V(s * X, y - 0.17, back), 0.006, mats.enamel);
-    // chrome lip in front of the covers, on little posts
-    k.rod(V(-X, y + 0.035, 0.012), V(X, y + 0.035, 0.012), 0.0045, mats.chrome);
-    for (let x = -X + 0.04; x < X; x += 0.155) k.rod(V(x, y - 0.012, 0.01), V(x, y + 0.035, 0.012), 0.0025, mats.chrome);
-    for (const s of [-1, 1]) k.ball(V(s * (X + 0.012), y + 0.035, 0.012), 0.009, mats.brass);
+    k.beam(V(-RW / 2, y - 0.009, -0.045), V(RW / 2, y - 0.009, -0.045), 0.11, 0.018, mats.hinoki, V(0, 0, 1));
+    const lipY = y + 0.03, lipZ = 0.014;
+    k.dowel(V(-X - 0.025, lipY, lipZ), V(X + 0.025, lipY, lipZ), 0.006, mats.hinoki);
+    for (const s of [-1, 1]) {
+      k.dowel(V(s * (RW / 2 - 0.045), lipY, lipZ), V(s * (RW / 2 - 0.005), lipY, lipZ), 0.0085, mats.sleeve);
+      // spacer block from the post forward to the dowel
+      const z0 = postZ - POST / 2, z1 = lipZ + 0.012;
+      k.beam(V(s * X, lipY - 0.055, (z0 + z1) / 2), V(s * X, lipY - 0.007, (z0 + z1) / 2), POST + 0.004, z1 - z0, mats.hinoki);
+    }
   }
 
   const g = k.build('magazine_rack');
   let n = 0;
   for (const y of [1.2, 0.76, 0.32]) for (const x of [-0.155, 0.155]) slot(`slot_magazine_${String(++n).padStart(2, '0')}`, g, x, y, -0.03, deg(-12));
-
-  const s = sign('Magazines', 0.56, mats);
-  s.position.set(0, top + 0.1, back + 0.004);
-  g.add(s);
-  const kk = new Kit(mats);
-  for (const x of [-0.2, 0.2]) kk.rod(V(x, top, back + 0.004), V(x, top + 0.04, back + 0.004), 0.004, mats.chrome);
-  g.add(kk.build('sign_posts'));
   return g;
 }
 
-// Ladder stand after the reference photo, in metal: two bent uprights that
-// lean back slightly and meet in an arch, chrome rungs with brass ends, each
-// paper draped over a rung, turned on its side, overlapping the one above.
+// Ladder stand after the reference photo: two hinoki uprights leaning back
+// slightly, an oak board behind the lower half, and dowel rungs on spacer
+// blocks. Each paper drapes over a rung, turned on its side so the masthead
+// runs down the right edge, overlapping the one above.
 export const LADDER = { rungs: 6, top: 1.52, step: 0.135 };
 
 function newspaperLadder(mats) {
-  const k = new Kit(mats);
-  const LW = 0.38, X = LW / 2 + 0.0175, r = 0.012, topY = 1.7;
+  const k = new Kit();
+  const LW = 0.38, X = LW / 2 + POST / 2, H = 1.75;
   // rungs step forward as they go down; the uprights follow the same lean
   const rungZ = (y) => 0.05 + 0.008 * (LADDER.top - y) / LADDER.step;
-  const postZ = (y) => rungZ(y) - 0.018;
+  const postZ = (y) => rungZ(y) - 0.03;
+  const boardZ = (y) => postZ(y) - POST / 2 - 0.009;
 
-  k.bent([V(-X, 0.03, 0.3), V(-X, 0.03, postZ(0.03)), V(-X, topY, postZ(topY)), V(X, topY, postZ(topY)), V(X, 0.03, postZ(0.03)), V(X, 0.03, 0.3)], r, 0.06, mats.enamel);
+  base(k, mats, LW / 2 + 0.06, postZ(0) - 0.01, 0.24);
+  k.beam(V(0, 0.03, boardZ(0.03)), V(0, 1.0, boardZ(1.0)), LW + 0.07, 0.016, mats.oak);
   for (const s of [-1, 1]) {
-    k.rod(V(s * X, 0.03, postZ(0.03)), V(s * X, 0.03, -0.16), r, mats.enamel);
-    k.foot(V(s * X, 0.008, 0.3), mats.rubber);
-    k.foot(V(s * X, 0.008, -0.16), mats.rubber);
+    k.beam(V(s * X, 0.03, postZ(0.03)), V(s * X, H, postZ(H)), POST, POST, mats.hinoki);
+    for (const y of [0.3, 0.72]) k.bolt(V(s * X, y, postZ(y) + POST / 2 + 0.002), V(0, 0, 1), mats.iron);
   }
-  // cross brace low down, and a wire panel behind the lower papers
-  k.rod(V(-X, 0.22, postZ(0.22)), V(X, 0.22, postZ(0.22)), 0.008, mats.enamel);
-  for (let x = -X + 0.04; x < X - 0.02; x += 0.045) k.rod(V(x, 0.22, postZ(0.22) - 0.02), V(x, 0.95, postZ(0.95) - 0.02), 0.0025, mats.chrome);
-  for (const y of [0.22, 0.58, 0.95]) k.rod(V(-X, y, postZ(y) - 0.016), V(X, y, postZ(y) - 0.016), 0.003, mats.chrome);
 
   const hangW = NEWS.H, hangH = NEWS.W; // the folded paper, turned on its side
-  const g0 = [];
+  const at = [];
   for (let i = 0; i < LADDER.rungs; i++) {
     const y = LADDER.top - i * LADDER.step;
     const z = rungZ(y);
-    k.rod(V(-X - 0.02, y, z), V(X + 0.02, y, z), 0.006, mats.chrome);
+    k.dowel(V(-X - 0.03, y, z), V(X + 0.03, y, z), 0.006, mats.hinoki);
     for (const s of [-1, 1]) {
-      k.ball(V(s * (X + 0.026), y, z), 0.01, mats.brass);
-      k.rod(V(s * X, y, z), V(s * X, y, postZ(y)), 0.007, mats.chrome); // collar to the upright
+      k.dowel(V(s * (LW / 2 - 0.045), y, z), V(s * (LW / 2 - 0.005), y, z), 0.0085, mats.sleeve);
+      const z0 = postZ(y) - POST / 2, z1 = z + 0.012;
+      k.beam(V(s * X, y - 0.055, (z0 + z1) / 2), V(s * X, y - 0.007, (z0 + z1) / 2), POST + 0.004, z1 - z0, mats.hinoki);
     }
-    g0.push([-hangW / 2, y - 0.008 - hangH / 2, z - 0.004]);
+    at.push([-hangW / 2, y - 0.008 - hangH / 2, z - 0.004]);
   }
 
   const g = k.build('newspaper_ladder');
   // slot at the paper's left edge, half way down; +Y turned to point right
-  g0.forEach(([x, y, z], i) => slot(`slot_newspaper_${String(i + 1).padStart(2, '0')}`, g, x, y, z, deg(-2.7), deg(-90)));
-
-  const s = sign('Daily News', 0.46, mats);
-  s.position.set(0, topY + 0.09, postZ(topY));
-  g.add(s);
-  const kk = new Kit(mats);
-  for (const x of [-0.16, 0.16]) kk.rod(V(x, topY, postZ(topY)), V(x, topY + 0.04, postZ(topY)), 0.004, mats.chrome);
-  g.add(kk.build('sign_posts'));
+  at.forEach(([x, y, z], i) => slot(`slot_newspaper_${String(i + 1).padStart(2, '0')}`, g, x, y, z, deg(-3.4), deg(-90)));
   return g;
 }
 
@@ -194,10 +177,17 @@ export function buildPlaceholder(scene) {
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
   const wall = new THREE.Mesh(new THREE.PlaneGeometry(10, 5), mats.wall);
   wall.position.set(0, 2.5, -0.5); wall.receiveShadow = true;
-  room.add(floor, wall);
+  // side walls close the room, so swinging the view shows a corner, not a void
+  const side = (x) => {
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(6, 5), mats.wall);
+    w.rotation.y = -Math.sign(x) * Math.PI / 2;
+    w.position.set(x, 2.5, 2.5); w.receiveShadow = true;
+    return w;
+  };
+  room.add(floor, wall, side(-3), side(3));
 
   const rack = magazineRack(mats);
-  rack.position.set(-0.52, 0, 0);
+  rack.position.set(-0.5, 0, 0);
   const ladder = newspaperLadder(mats);
   ladder.position.set(0.42, 0, 0);
 

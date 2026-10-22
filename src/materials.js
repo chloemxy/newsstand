@@ -1,6 +1,6 @@
-// Vintage metal finishes, painted from procedural noise so the placeholder
-// reads as real material without any image files: chipped enamel, worn
-// chrome, aged brass, concrete and plaster.
+// Finishes for a quiet Japanese interior, painted from procedural noise so
+// the placeholder reads as real material without image files: pale hinoki,
+// smoked oak, blackened steel pins, frosted sleeves, plaster and stone.
 
 import * as THREE from 'three';
 
@@ -85,64 +85,80 @@ function range(canvas, lo, hi) {
   return c;
 }
 
+// Wood grain with the fibres running along v (down the length of a beam).
+// UVs are scaled to real size in stands.js, so one tile is 25 × 100 cm.
+function woodGrain(base, dark, seed, ringPx = 26) {
+  const W = 512, H = 1024, rand = rng(seed);
+  const a = new THREE.Color(base), b = new THREE.Color(dark);
+  // long fibre streaks: smoothed random value per column
+  const streak = new Float32Array(W);
+  let v = rand();
+  for (let x = 0; x < W; x++) { v += (rand() - 0.5) * 0.35; v = Math.min(1, Math.max(0, v)); streak[x] = v; }
+  const p1 = rand() * 6, p2 = rand() * 6;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(W, H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const warp = 16 * Math.sin(y * 0.005 + p1) + 7 * Math.sin(y * 0.017 + x * 0.011 + p2);
+      const t = (x + warp) / ringPx;
+      const ring = Math.pow(0.5 + 0.5 * Math.sin(t * Math.PI * 2), 8);
+      const k = Math.min(1, ring * 0.5 + streak[x] * 0.22 + (rand() - 0.5) * 0.05);
+      const i = (y * W + x) * 4;
+      img.data[i] = (a.r + (b.r - a.r) * k) * 255;
+      img.data[i + 1] = (a.g + (b.g - a.g) * k) * 255;
+      img.data[i + 2] = (a.b + (b.b - a.b) * k) * 255;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+function grey(canvas) {
+  const c = document.createElement('canvas');
+  c.width = canvas.width; c.height = canvas.height;
+  const ctx = c.getContext('2d');
+  ctx.filter = 'grayscale(1)';
+  ctx.drawImage(canvas, 0, 0);
+  return c;
+}
+
+function wood(base, dark, seed, { roughness = [0.45, 0.75], ring } = {}) {
+  const grain = woodGrain(base, dark, seed, ring);
+  return new THREE.MeshPhysicalMaterial({
+    map: texture(grain, { srgb: true }),
+    roughness: 1,
+    roughnessMap: texture(range(grey(grain), roughness[0], roughness[1])),
+    bumpMap: texture(grey(grain)),
+    bumpScale: 0.35,
+    sheen: 0.25, sheenRoughness: 0.6, sheenColor: new THREE.Color('#fff4e2'), // oiled finish
+  });
+}
+
 export function makeMaterials() {
-  const grain = noise(512, 11);
   const fine = noise(256, 23, [[32, 0.5], [128, 0.3], [256, 0.2]]);
 
-  // painted steel tube: deep green enamel, gloss worn in places, small chips to bare metal
-  const enamel = new THREE.MeshPhysicalMaterial({
-    map: texture(wornColour('#2d4a3e', 3, { chips: 160, chipColour: '#5b5650' }), { srgb: true, repeat: [1, 6] }),
-    roughness: 1,
-    roughnessMap: texture(range(grain, 0.25, 0.6), { repeat: [1, 6] }),
-    metalness: 0.15,
-    clearcoat: 0.6,
-    clearcoatRoughness: 0.28,
-    bumpMap: texture(fine, { repeat: [1, 6] }),
-    bumpScale: 0.6,
-  });
-
-  // the same enamel on flat sheet (signs), without the tube's stretched UVs
-  const enamelSheet = enamel.clone();
-  enamelSheet.map = texture(wornColour('#2d4a3e', 5, { chips: 40, chipColour: '#5b5650' }), { srgb: true });
-
-  const chrome = new THREE.MeshStandardMaterial({
-    color: '#d4d6d6',
-    metalness: 1,
-    roughness: 1,
-    roughnessMap: texture(range(grain, 0.08, 0.32), { repeat: [1, 4] }),
-    bumpMap: texture(fine, { repeat: [1, 4] }),
-    bumpScale: 0.15,
-  });
-
-  const brass = new THREE.MeshStandardMaterial({
-    map: texture(wornColour('#b38a4e', 9, { chips: 60, chipColour: '#5d4a2a', mottle: 0.2 }), { srgb: true }),
-    metalness: 1,
-    roughness: 1,
-    roughnessMap: texture(range(grain, 0.25, 0.55)),
-  });
-
-  const rubber = new THREE.MeshStandardMaterial({ color: '#1c1b1a', roughness: 0.85 });
-
-  const castIron = new THREE.MeshStandardMaterial({
-    map: texture(wornColour('#2b2a28', 13, { chips: 80, chipColour: '#4a3a2c', mottle: 0.25 }), { srgb: true }),
-    metalness: 0.7,
-    roughness: 1,
-    roughnessMap: texture(range(grain, 0.45, 0.8)),
-    bumpMap: texture(fine), bumpScale: 1,
-  });
-
-  const floor = new THREE.MeshStandardMaterial({
-    map: texture(wornColour('#d8d3c9', 17, { mottle: 0.18, size: 1024 }), { srgb: true, repeat: [3, 3] }),
-    roughness: 1,
-    roughnessMap: texture(range(noise(512, 19), 0.65, 0.95), { repeat: [3, 3] }),
-    bumpMap: texture(fine, { repeat: [12, 12] }), bumpScale: 0.4,
-  });
-
-  const wall = new THREE.MeshStandardMaterial({
-    map: texture(wornColour('#f3f0ea', 29, { mottle: 0.05, size: 1024 }), { srgb: true, repeat: [2, 1] }),
-    roughness: 0.95,
-    bumpMap: texture(fine, { repeat: [10, 5] }), bumpScale: 0.25,
-  });
-
-  return { enamel, enamelSheet, chrome, brass, rubber, castIron, floor, wall };
+  return {
+    // pale hinoki for uprights, ledges and rungs
+    hinoki: wood('#f0e3cb', '#d3b78e', 31),
+    // smoked oak for back boards and bases, for quiet contrast
+    oak: wood('#a88a6c', '#76583f', 37, { roughness: [0.4, 0.7], ring: 34 }),
+    // blackened steel pins and bolt heads
+    iron: new THREE.MeshStandardMaterial({ color: '#2a2826', metalness: 0.8, roughness: 0.45 }),
+    // frosted acrylic sleeves on the rung ends, as in the photo
+    sleeve: new THREE.MeshPhysicalMaterial({ color: '#f4f1ec', roughness: 0.35, transparent: true, opacity: 0.55 }),
+    floor: new THREE.MeshStandardMaterial({
+      map: texture(wornColour('#e4ddd1', 17, { mottle: 0.1, size: 1024 }), { srgb: true, repeat: [3, 3] }),
+      roughness: 1,
+      roughnessMap: texture(range(noise(512, 19), 0.6, 0.9), { repeat: [3, 3] }),
+      bumpMap: texture(fine, { repeat: [12, 12] }), bumpScale: 0.3,
+    }),
+    wall: new THREE.MeshStandardMaterial({
+      map: texture(wornColour('#efe9de', 29, { mottle: 0.06, size: 1024 }), { srgb: true, repeat: [2, 1] }),
+      roughness: 0.95,
+      bumpMap: texture(fine, { repeat: [10, 5] }), bumpScale: 0.35,
+    }),
+  };
 }

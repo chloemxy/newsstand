@@ -1,6 +1,6 @@
 // Post-processing: ambient occlusion so wires and shelves sit in their own
 // soft shadows, then tone mapping, then a faint film grain and vignette for
-// the vintage feel. Phones skip the occlusion to stay smooth.
+// a printed, still-photo feel. Phones skip the occlusion to stay smooth.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -12,7 +12,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 const still = matchMedia('(prefers-reduced-motion: reduce)');
 
 const Grain = {
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, amount: { value: 0.03 }, vignette: { value: 0.35 } },
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, amount: { value: 0.018 }, vignette: { value: 0.25 } },
   vertexShader: /* glsl */`
     varying vec2 vUv;
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,

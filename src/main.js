@@ -27,11 +27,11 @@ async function start() {
   setMaterialAnisotropy(renderer.capabilities.getMaxAnisotropy());
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#f6f4ef');
-  // a soft studio room for chrome and enamel to reflect
+  scene.background = new THREE.Color('#efe9de');
+  // a soft room for the oiled wood to catch highlights from
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.3;
+  scene.environmentIntensity = 0.35;
 
   const camera = new THREE.PerspectiveCamera(40, 1, 0.02, 50);
   camera.position.fromArray(CONFIG.camera);
@@ -45,24 +45,7 @@ async function start() {
   controls.minAzimuthAngle = o.minAzimuth; controls.maxAzimuthAngle = o.maxAzimuth;
   controls.minPolarAngle = o.minPolar; controls.maxPolarAngle = o.maxPolar;
 
-  if (CONFIG.defaultLights) {
-    scene.add(new THREE.HemisphereLight('#fffaf0', '#d8d2c6', 0.35));
-    // warm key light from the upper right, like a shop window
-    const sun = new THREE.DirectionalLight('#fff1dc', 2.4);
-    sun.position.set(1.8, 3.4, 2.4);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(sun.shadow.camera, { left: -1.6, right: 1.6, top: 2.3, bottom: -0.3, near: 0.5, far: 8 });
-    sun.shadow.radius = 6;
-    sun.shadow.blurSamples = 16;
-    sun.shadow.bias = -0.0002;
-    sun.shadow.normalBias = 0.01;
-    scene.add(sun);
-    // cool fill from the left so the shadow side isn't flat
-    const fill = new THREE.DirectionalLight('#dfe8ff', 0.5);
-    fill.position.set(-2.5, 1.8, 1.5);
-    scene.add(fill);
-  }
+  if (CONFIG.defaultLights) addLights(scene);
 
   // the direction the camera looks from; the distance is worked out to fit
   const viewDir = new THREE.Vector3().fromArray(CONFIG.camera).sub(controls.target).normalize();
@@ -117,8 +100,8 @@ async function start() {
     const lift = (vh / 2 - (top + bottom) / 2) / vh * 2 * d * tanH;
     controls.target.copy(centre).add(new THREE.Vector3(0, -lift, 0));
     camera.position.copy(controls.target).addScaledVector(viewDir, d);
-    controls.minDistance = d * 0.55;
-    controls.maxDistance = d * 1.25;
+    controls.minDistance = d * 0.45;
+    controls.maxDistance = d * 1.3;
     controls.update();
   }
 
@@ -144,6 +127,53 @@ async function start() {
 
   loading.classList.add('done');
   setTimeout(() => loading.remove(), 400);
+}
+
+// Late afternoon light through a shoji screen: a low warm sun from the right,
+// a spotlight carrying the screen's lattice onto the wall, a cool fill.
+function addLights(scene) {
+  scene.add(new THREE.HemisphereLight('#fff8ee', '#d6cdbf', 0.4));
+
+  const sun = new THREE.DirectionalLight('#ffe8cc', 2.1);
+  sun.position.set(2.6, 2.7, 1.4);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -1.8, right: 1.8, top: 2.4, bottom: -0.4, near: 0.5, far: 9 });
+  sun.shadow.radius = 10;
+  sun.shadow.blurSamples = 24;
+  sun.shadow.bias = -0.0002;
+  sun.shadow.normalBias = 0.01;
+  scene.add(sun);
+
+  const lattice = new THREE.SpotLight('#ffe2bf', 20, 0, 0.62, 0.85, 2);
+  lattice.position.set(2.4, 2.5, 1.7);
+  lattice.target.position.set(-0.4, 1.2, -0.5);
+  lattice.map = shojiTexture();
+  lattice.castShadow = true; // three only projects a map from a shadow-casting light
+  lattice.shadow.mapSize.set(1024, 1024);
+  lattice.shadow.radius = 8;
+  lattice.shadow.blurSamples = 16;
+  lattice.shadow.bias = -0.0003;
+  scene.add(lattice, lattice.target);
+
+  const fill = new THREE.DirectionalLight('#e3ebff', 0.35);
+  fill.position.set(-2.5, 1.6, 1.5);
+  scene.add(fill);
+}
+
+// A shoji grid, softened, used as a light cookie. Bars let some light through.
+function shojiTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 512, 512);
+  ctx.filter = 'blur(5px)';
+  ctx.fillStyle = '#6a6460';
+  for (let x = 40; x < 512; x += 72) ctx.fillRect(x, 0, 9, 512);
+  for (let y = 30; y < 512; y += 110) ctx.fillRect(0, y, 512, 9);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }
 
 start().catch((err) => {

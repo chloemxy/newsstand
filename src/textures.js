@@ -152,31 +152,3 @@ export function loadImage(url) {
   });
 }
 
-// Enamel shop sign: cream lettering and double border on green, a little worn.
-export function paintEnamelSign(text, w = 1024, h = 224) {
-  const [c, ctx] = canvas(w, h);
-  ctx.fillStyle = '#2d4a3e'; ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = '#efe6cf';
-  ctx.lineWidth = 8; ctx.strokeRect(20, 20, w - 40, h - 40);
-  ctx.lineWidth = 3; ctx.strokeRect(36, 36, w - 72, h - 72);
-  ctx.fillStyle = '#efe6cf'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const label = text.toUpperCase().split('').join('\u200A');
-  fitFont(ctx, label, `700 {s}px ${F.news}`, w - 160, 120);
-  ctx.fillText(label, w / 2, h / 2 + 6);
-  // rivets
-  ctx.fillStyle = '#b38a4e';
-  for (const [x, y] of [[56, h / 2], [w - 56, h / 2]]) { ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill(); }
-  // wear: chips through to the steel underneath
-  let s = text.length * 97;
-  const r = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
-  ctx.fillStyle = '#4b4741';
-  for (let i = 0; i < 70; i++) {
-    const edge = r() < 0.7;
-    const x = edge ? (r() < 0.5 ? r() * 30 : w - r() * 30) : r() * w;
-    const y = r() * h, rad = 1 + r() * r() * 9;
-    ctx.globalAlpha = 0.6 + r() * 0.4;
-    ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-  return c;
-}
