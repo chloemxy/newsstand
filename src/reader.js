@@ -132,7 +132,8 @@ export class Reader {
       : { l: 0, r: vw, t: bar, b: vh * (1 - SHEET) };
     const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
     const availW = (free.r - free.l) / vw, availH = (free.b - free.t) / vh;
-    const d = Math.max(f.h / (2 * tanH * availH * 0.84), f.w / (2 * tanH * this.camera.aspect * availW * 0.84));
+    const fill = item.readFill ?? 0.84; // share of the free area the item may take
+    const d = Math.max(f.h / (2 * tanH * availH * fill), f.w / (2 * tanH * this.camera.aspect * availW * fill));
     const viewH = 2 * d * tanH, viewW = viewH * this.camera.aspect;
     const sx = ((free.l + free.r) / 2 / vw - 0.5) * viewW;
     const sy = (0.5 - (free.t + free.b) / 2 / vh) * viewH;

@@ -241,6 +241,8 @@ export class Newspaper {
 
     this.root = new THREE.Group();
     this.root.name = `newspaper_${data.id}`;
+    this.rodHalf = rod.half;
+    this.readFill = 0.72; // held further back than a magazine, rod and all in view
 
     // the rod and its sleeves travel with the paper
     const rodMesh = new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R, DOWEL_R, rod.half * 2, 20).rotateZ(Math.PI / 2), rod.wood);
@@ -277,11 +279,11 @@ export class Newspaper {
   visiblePages() { return [this.spread]; }
   positionLabel() { return `Page ${this.spread + 1} of ${this.pageCount}`; }
 
-  // the area the paper covers, in reading (camera) space after readQuat:
-  // the spine on the left at x = 0, the page to its right
+  // the area the paper and its rod cover, in reading (camera) space after
+  // readQuat: the rod down the left at x = 0, the page to its right
   frame() {
-    const { W, H } = NEWS;
-    return { w: W, h: H, cx: W / 2, cy: 0 };
+    const { W } = NEWS, left = DOWEL_R + 0.003;
+    return { w: W + left, h: this.rodHalf * 2, cx: (W - left) / 2, cy: 0 };
   }
 
   page(i) {
