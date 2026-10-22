@@ -2,7 +2,7 @@
 
 An interactive 3D newsstand built with three.js. Click a magazine or newspaper to pick it up. Magazines open to a spread and newspapers unfold, and you can turn pages and put them back. The stands are grey-box placeholders until the real Blender model is added.
 
-The visual style follows [frontoffice.co](https://frontoffice.co): white paper, black ink, hairline rules, a light flared serif and a tracked grotesk. The stands are quiet Japanese joinery: hinoki uprights and dowels on smoked oak boards, lit like a still photograph with shoji-screen light on the wall. The newspaper stand is a ladder where each paper drapes over a rung. See `fonts.css` for the typefaces and how to add the licensed originals.
+The visual style follows [frontoffice.co](https://frontoffice.co): white paper, black ink, hairline rules, a light flared serif and a tracked grotesk. The stands are quiet Japanese joinery: hinoki uprights and dowels on smoked oak boards, lit by a low sunset through a shoji screen. The newspaper stand is a ladder where each paper drapes over a rung. See `fonts.css` for the typefaces and how to add the licensed originals.
 
 ## Run it locally
 
@@ -24,7 +24,7 @@ Then open http://localhost:4517.
 | `src/reader.js` | Hover, pick up, open, turn pages, put back, reader panel |
 | `src/stands.js` | Placeholder stands in hinoki and smoked oak, and slot lookup |
 | `src/materials.js` | Procedural finishes: wood grain, steel, frosted sleeves, plaster, stone |
-| `src/post.js` | Ambient occlusion, tone mapping, film grain and vignette |
+| `src/post.js` | Tone mapping, film grain and vignette |
 | `src/model.js` | Loads a `.glb` stand model and finds its slots |
 | `src/textures.js` | Paints covers and pages onto canvases |
 | `serve.py` | No-cache local server |

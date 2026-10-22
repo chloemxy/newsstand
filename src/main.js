@@ -20,18 +20,18 @@ async function start() {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.VSMShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap; // VSM bled light and shimmered at grazing angles
   renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = 0.95;
+  renderer.toneMappingExposure = 1.05;
   setAnisotropy(renderer.capabilities.getMaxAnisotropy());
   setMaterialAnisotropy(renderer.capabilities.getMaxAnisotropy());
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#efe9de');
+  scene.background = new THREE.Color('#ead5bd');
   // a soft room for the oiled wood to catch highlights from
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.35;
+  scene.environmentIntensity = 0.22;
 
   const camera = new THREE.PerspectiveCamera(40, 1, 0.02, 50);
   camera.position.fromArray(CONFIG.camera);
@@ -129,36 +129,36 @@ async function start() {
   setTimeout(() => loading.remove(), 400);
 }
 
-// Late afternoon light through a shoji screen: a low warm sun from the right,
-// a spotlight carrying the screen's lattice onto the wall, a cool fill.
+// Sunset through a shoji screen: a low orange sun from the right throwing
+// long shadows across the room, the screen's lattice stretched over the
+// wall, a dusky blue sky fill from the left.
 function addLights(scene) {
-  scene.add(new THREE.HemisphereLight('#fff8ee', '#d6cdbf', 0.4));
+  scene.add(new THREE.HemisphereLight('#b8b3c4', '#b98a62', 0.4));
 
-  const sun = new THREE.DirectionalLight('#ffe8cc', 2.1);
-  sun.position.set(2.6, 2.7, 1.4);
+  const sun = new THREE.DirectionalLight('#ffa35e', 3.2);
+  sun.position.set(4.2, 1.35, 1.6);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -1.8, right: 1.8, top: 2.4, bottom: -0.4, near: 0.5, far: 9 });
-  sun.shadow.radius = 10;
-  sun.shadow.blurSamples = 24;
-  sun.shadow.bias = -0.0002;
-  sun.shadow.normalBias = 0.01;
+  const small = innerWidth < 700; // phones get lighter shadow maps
+  sun.shadow.mapSize.setScalar(small ? 2048 : 4096);
+  Object.assign(sun.shadow.camera, { left: -3.2, right: 3.2, top: 2.6, bottom: -0.6, near: 0.5, far: 12 });
+  sun.shadow.radius = 3;
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.025;
   scene.add(sun);
 
-  const lattice = new THREE.SpotLight('#ffe2bf', 20, 0, 0.62, 0.85, 2);
-  lattice.position.set(2.4, 2.5, 1.7);
-  lattice.target.position.set(-0.4, 1.2, -0.5);
+  const lattice = new THREE.SpotLight('#ffb27a', 30, 0, 0.5, 0.9, 2);
+  lattice.position.set(3.6, 1.5, 1.4);
+  lattice.target.position.set(-0.8, 1.35, -0.5);
   lattice.map = shojiTexture();
   lattice.castShadow = true; // three only projects a map from a shadow-casting light
-  lattice.shadow.mapSize.set(1024, 1024);
-  lattice.shadow.radius = 8;
-  lattice.shadow.blurSamples = 16;
-  lattice.shadow.bias = -0.0003;
+  lattice.shadow.mapSize.setScalar(small ? 1024 : 2048);
+  lattice.shadow.bias = -0.0004;
+  lattice.shadow.normalBias = 0.025;
   scene.add(lattice, lattice.target);
 
-  const fill = new THREE.DirectionalLight('#e3ebff', 0.35);
-  fill.position.set(-2.5, 1.6, 1.5);
-  scene.add(fill);
+  const sky = new THREE.DirectionalLight('#8fa4ff', 0.35);
+  sky.position.set(-3, 2.2, 1.5);
+  scene.add(sky);
 }
 
 // A shoji grid, softened, used as a light cookie. Bars let some light through.

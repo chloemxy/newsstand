@@ -61,7 +61,7 @@ export class Reader {
   bind() {
     const c = this.canvas;
     let down = null;
-    c.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
+    c.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; this.setHover(null); });
     c.addEventListener('pointerup', (e) => {
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return;
       down = null;
@@ -88,7 +88,8 @@ export class Reader {
   }
 
   move(e) {
-    if (this.state !== 'idle' || e.pointerType === 'touch') return;
+    // no hover while dragging the view, or items pop forward as the cursor sweeps past
+    if (this.state !== 'idle' || e.pointerType === 'touch' || e.buttons) return;
     const h = this.hit(e, this.meshes);
     this.setHover(h ? h.object.userData.item : null);
     if (this.hovered) {

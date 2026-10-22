@@ -1,11 +1,10 @@
-// Post-processing: ambient occlusion so wires and shelves sit in their own
-// soft shadows, then tone mapping, then a faint film grain and vignette for
-// a printed, still-photo feel. Phones skip the occlusion to stay smooth.
+// Post-processing: tone mapping, then a faint film grain and vignette for a
+// printed, still-photo feel. (Screen-space ambient occlusion was tried and
+// dropped: it haloed and banded on the thin dowels at oblique angles.)
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
@@ -34,11 +33,6 @@ export function makePost(renderer, scene, camera) {
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
 
-  const ao = new GTAOPass(scene, camera, 1, 1);
-  ao.updateGtaoMaterial({ radius: 0.12, distanceExponent: 1.5, thickness: 1, scale: 1.1, samples: 16 });
-  ao.blendIntensity = 0.85;
-  composer.addPass(ao);
-
   composer.addPass(new OutputPass());
   const grain = new ShaderPass(Grain);
   composer.addPass(grain);
@@ -46,7 +40,6 @@ export function makePost(renderer, scene, camera) {
   let frame = 0;
   return {
     setSize(w, h) {
-      ao.enabled = w >= 700; // phones: skip AO
       composer.setPixelRatio(Math.min(devicePixelRatio, 2));
       composer.setSize(w, h);
     },
