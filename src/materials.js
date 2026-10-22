@@ -141,15 +141,19 @@ export function makeMaterials() {
   const fine = noise(256, 23, [[32, 0.5], [128, 0.3], [256, 0.2]]);
 
   return {
-    // pale hinoki for uprights, ledges and rungs
-    hinoki: wood('#f0e3cb', '#d3b78e', 31),
-    // smoked oak for back boards and bases, for quiet contrast
-    oak: wood('#a88a6c', '#76583f', 37, { roughness: [0.4, 0.7], ring: 34 }),
-    // blackened steel pins and bolt heads
-    iron: new THREE.MeshStandardMaterial({ color: '#2a2826', metalness: 0.8, roughness: 0.45 }),
-    // frosted acrylic sleeves on the rung ends, as in the photo. Kept opaque:
+    // pale pine for posts, blocks and rods (key kept as `hinoki`)
+    hinoki: wood('#ecdcc2', '#d8bf9b', 31, { ring: 16 }),
+    // MDF for the back board and base: flat brown, a fine fibre speckle, no grain
+    oak: new THREE.MeshStandardMaterial({
+      map: texture(wornColour('#8d6948', 41, { mottle: 0.07, size: 512 }), { srgb: true, repeat: [3, 3] }),
+      roughness: 0.88,
+      bumpMap: texture(fine, { repeat: [8, 8] }), bumpScale: 0.25,
+    }),
+    // dark zinc screws and washers
+    iron: new THREE.MeshStandardMaterial({ color: '#4b4c4c', metalness: 0.85, roughness: 0.4 }),
+    // pink-lavender plastic sleeves on the rod ends, as in the photo. Opaque:
     // see-through parts inside one merged mesh can't be depth-sorted and flicker.
-    sleeve: new THREE.MeshPhysicalMaterial({ color: '#efebe4', roughness: 0.3, sheen: 0.6, sheenColor: new THREE.Color('#ffffff'), clearcoat: 0.4, clearcoatRoughness: 0.4 }),
+    sleeve: new THREE.MeshPhysicalMaterial({ color: '#cfb1c6', roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.25 }),
     floor: new THREE.MeshStandardMaterial({
       map: texture(wornColour('#e4ddd1', 17, { mottle: 0.1, size: 1024 }), { srgb: true, repeat: [3, 3] }),
       roughness: 1,

@@ -78,11 +78,14 @@ export const magazines = [
   },
 ];
 
+// Newspapers are tabloids that hang over a rung, folded at the spine. Each
+// front page has a style, after the reference photo:
+//   quote:        one huge condensed headline, like a poster
+//   photo:        a serif headline over a large black-and-white photograph
+//   illustration: a headline beside a flat colour illustration (accent colour)
 export const newspapers = [
   {
-    id: 'morning-post',
-    title: 'The Morning Post',
-    date: 'Wednesday 21 October 2026',
+    id: 'morning-post', title: 'The Morning Post', date: 'Wednesday 21 October 2026', style: 'photo',
     pages: [
       { kicker: 'Front page', headline: 'City approves night market on the old tram depot', body: 'The council voted seven to two last night to open the depot to traders on Fridays and Saturdays from spring.' },
       { kicker: 'Local', headline: 'Bakery queue returns after six-month refit', body: 'Regulars were waiting at 6 a.m. for the first loaves from the new oven.' },
@@ -90,9 +93,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'evening-ledger',
-    title: 'Evening Ledger',
-    date: 'Wednesday 21 October 2026',
+    id: 'evening-ledger', title: 'Evening Ledger', date: 'Wednesday 21 October 2026', style: 'illustration', accent: '#3f9a4a',
     pages: [
       { kicker: 'Front page', headline: 'Ferry service extended to the outer islands', body: 'Two extra crossings a day start next month, with bicycles carried free.' },
       { kicker: 'Business', headline: 'Corner shops report their best quarter in years', body: 'Owners credit late opening hours and a return to local suppliers.' },
@@ -100,9 +101,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'weekly-courier',
-    title: 'The Weekly Courier',
-    date: 'Week 43 · 2026',
+    id: 'weekly-courier', title: 'The Weekly Courier', date: 'Week 43 · 2026', style: 'photo',
     pages: [
       { kicker: 'Front page', headline: 'Library stays open until midnight for exam season', body: 'Students asked, the board agreed, and the coffee machine has been serviced.' },
       { kicker: 'Culture', headline: 'Open-air cinema plans winter screenings', body: 'Blankets provided. The first film is chosen by public vote.' },
@@ -110,33 +109,51 @@ export const newspapers = [
     ],
   },
   {
-    id: 'harbour-gazette',
-    title: 'Harbour Gazette',
-    date: 'Thursday 22 October 2026',
+    id: 'harbour-gazette', title: 'Harbour Gazette', date: 'Thursday 22 October 2026', style: 'quote',
     pages: [
-      { kicker: 'Front page', headline: 'Pier reopens after storm repairs', body: 'Anglers were back on the boards by noon. The new railings are a foot higher.' },
+      { kicker: 'Front page', headline: '“The pier is open again, mind the new railings”', body: 'Anglers were back on the boards by noon. The new railings are a foot higher.' },
       { kicker: 'Tides', headline: 'This week’s tide table', body: 'Springs on Saturday, with the lowest water just after dawn.' },
       { kicker: 'Notices', headline: 'Lost: one blue rowing boat', body: 'Last seen drifting past the lighthouse on Tuesday evening. Answers to nothing.' },
     ],
   },
   {
-    id: 'studio-review',
-    title: 'Studio Review',
-    date: 'Autumn 2026',
-    pages: [
-      { kicker: 'Front page', headline: 'Let’s aim to get all things done by spring', body: 'Twelve studios share the deadlines they set themselves, and which ones they kept.' },
-      { kicker: 'Process', headline: 'An attempt to draw every day', body: 'One illustrator, one sketchbook, three hundred and sixty-five small drawings.' },
-      { kicker: 'Type', headline: 'Vectors and more vectors', body: 'Why a lettering studio went back to pencil before going back to the screen.' },
-    ],
-  },
-  {
-    id: 'market-daily',
-    title: 'Market Daily',
-    date: 'Thursday 22 October 2026',
+    id: 'market-daily', title: 'Market Daily', date: 'Thursday 22 October 2026', style: 'illustration', accent: '#d8572a',
     pages: [
       { kicker: 'Front page', headline: 'Apple harvest is the best in a decade', body: 'Growers say a dry summer and a late frost made for small, sweet fruit.' },
       { kicker: 'Prices', headline: 'What a basket costs this week', body: 'Bread steady, eggs down, coffee up again.' },
       { kicker: 'Stalls', headline: 'New faces at the Saturday market', body: 'A cheesemaker, a knife sharpener and a man who only sells mushrooms.' },
+    ],
+  },
+  {
+    id: 'city-letter', title: 'The City Letter', date: 'October 2026', style: 'photo',
+    pages: [
+      { kicker: 'Front page', headline: 'Twelve studios open their doors for one weekend', body: 'Printers, potters and a type foundry let the public in to watch them work.' },
+      { kicker: 'Interview', headline: 'The last hot-metal printer in town', body: 'He still sets the wedding invitations by hand, letter by letter.' },
+      { kicker: 'Listings', headline: 'What’s on this month', body: 'Talks, walks, a book fair and an evening of slide shows.' },
+    ],
+  },
+  {
+    id: 'studio-review', title: 'Studio Review', date: 'Autumn 2026', style: 'illustration', accent: '#2f6fb3',
+    pages: [
+      { kicker: 'Front page', headline: 'Vectors and more vectors', body: 'Why a lettering studio went back to pencil before going back to the screen.' },
+      { kicker: 'Process', headline: 'An attempt to draw every day', body: 'One illustrator, one sketchbook, three hundred and sixty-five small drawings.' },
+      { kicker: 'Type', headline: 'The arrival of a new serif', body: 'Four years in the making, cut for small sizes and cold newsprint.' },
+    ],
+  },
+  {
+    id: 'northern-times', title: 'Northern Times', date: 'Friday 23 October 2026', style: 'photo',
+    pages: [
+      { kicker: 'Front page', headline: 'Have you seen the new reading room?', body: 'The old post office reopens as a reading room with forty desks and long hours.' },
+      { kicker: 'Outdoors', headline: 'First snow on the high pass', body: 'The road stays open for now; chains are advised after dark.' },
+      { kicker: 'Food', headline: 'A soup for every day of the week', body: 'Seven recipes from the school kitchen, scaled down for four.' },
+    ],
+  },
+  {
+    id: 'the-letterbox', title: 'The Letterbox', date: 'For the month of October', style: 'quote',
+    pages: [
+      { kicker: 'Front page', headline: '“Let’s aim to get all things done and dusted by 19 December”', body: 'A month-long plan from the editors, with lists, deadlines and one long lunch.' },
+      { kicker: 'Process', headline: 'Mind-maps, monsters and other drafts', body: 'Every idea for this issue, before most of them were thrown away.' },
+      { kicker: 'Back page', headline: 'The work in progress', body: 'Small notes from a desk that is never quite tidy.' },
     ],
   },
 ];

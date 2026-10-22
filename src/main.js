@@ -70,7 +70,7 @@ async function start() {
   const place = (list, slotList, Make) => list.forEach((data, i) => {
     const slot = slotList[i];
     if (!slot) { console.warn(`No slot for "${data.title}". Add more slots to the model.`); return; }
-    const item = new Make(data);
+    const item = new Make(data, slot.userData);
     item.slot = slot;
     item.root.position.copy(item.mount);
     slot.add(item.root);
@@ -97,11 +97,11 @@ async function start() {
   // a loaded model.
   const aim = shotFocus ? shotFocus(...shot.focus) : centre;
 
-  // Fixed framing, like the photo: `span` metres across the shorter side of
-  // the screen, aimed at the focus point.
+  // Fixed framing, like the photo: `span` metres top to bottom, and never
+  // less than `minWidth` metres across, so narrow phones don't crop the stand.
   function frameScene() {
     const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
-    const d = shot.span / 2 / tanH / Math.min(1, camera.aspect);
+    const d = Math.max(shot.span / 2 / tanH, shot.minWidth / 2 / (tanH * camera.aspect));
     camera.position.copy(aim).addScaledVector(viewDir, d);
     camera.lookAt(aim);
   }

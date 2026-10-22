@@ -1,13 +1,11 @@
-// Placeholder stands in wood, after the reference photo, with a quiet
-// Japanese finish: pale hinoki uprights, ledges and dowels, a smoked oak
-// back board on split base slabs, small spacer blocks under each dowel,
-// frosted sleeves and blackened bolts. They expose the same slots a GLB
+// Placeholder stands in wood, after the reference photo: pale pine posts,
+// blocks and dowels, an MDF back board on split MDF base slabs, pink
+// plastic sleeves on the rods and dark screws with washers. They expose the same slots a GLB
 // would (see models/README.md), so swapping in the real model is a config
 // change.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { NEWS } from './items.js';
 import { makeMaterials } from './materials.js';
 
 const deg = THREE.MathUtils.degToRad;
@@ -58,10 +56,13 @@ class Kit {
 
   // a bolt head on a face, pointing along `normal`
   bolt(p, normal, mat) {
-    const g = new THREE.CylinderGeometry(0.0065, 0.0065, 0.004, 16);
-    g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), normal));
-    g.translate(p.x, p.y, p.z);
-    this.add(g, mat);
+    const q = new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), normal);
+    // a washer, then a domed head
+    const washer = new THREE.CylinderGeometry(0.009, 0.009, 0.0012, 20).applyQuaternion(q);
+    washer.translate(p.x, p.y, p.z);
+    const head = new THREE.SphereGeometry(0.0058, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.45, 1).applyQuaternion(q);
+    head.translate(p.x, p.y, p.z);
+    this.add(washer, mat); this.add(head, mat);
   }
 
   build(name) {
@@ -128,47 +129,51 @@ function magazineRack(mats) {
   return g;
 }
 
-// Ladder stand after the reference photo: two hinoki uprights leaning back
-// slightly, an oak board behind the lower half, and dowel rungs on spacer
-// blocks. Each paper drapes over a rung, turned on its side so the masthead
-// runs down the right edge, overlapping the one above.
-export const LADDER = { rungs: 6, top: 1.52, step: 0.135 };
+// Ladder stand after the reference photo: two pine posts leaning back
+// slightly, an MDF board behind the lower half on split MDF base slabs, and
+// a small pine block under each end of every rung. The rungs themselves
+// belong to the newspapers (each paper is folded over its own rod), so
+// picking a paper up lifts the rod off its blocks.
+export const LADDER = { rungs: 9, top: 1.5, step: 0.1, rodR: 0.006 };
 
 function newspaperLadder(mats) {
   const k = new Kit();
-  const LW = 0.38, X = LW / 2 + POST / 2, H = HEIGHT;
-  // rungs step forward as they go down; the uprights follow the same lean
-  const rungZ = (y) => 0.05 + 0.008 * (LADDER.top - y) / LADDER.step;
+  const LW = 0.42, X = LW / 2 + POST / 2, H = HEIGHT;
+  // each rung sits a little further forward than the one above, so the
+  // papers shingle like the photo; the stand stays nearly upright
+  const rungZ = (y) => 0.05 + 0.012 * (LADDER.top - y) / LADDER.step;
   const postZ = (y) => rungZ(y) - 0.03;
   const boardZ = (y) => postZ(y) - POST / 2 - 0.009;
 
-  base(k, mats, LW / 2 + 0.06, boardZ(0.03) + BASE_AHEAD, 0.22);
-  k.beam(V(0, 0.03, boardZ(0.03)), V(0, 1.0, boardZ(1.0)), LW + 0.07, 0.016, mats.oak);
+  base(k, mats, LW / 2 + 0.07, boardZ(0.03) + BASE_AHEAD, 0.24);
+  k.beam(V(0, 0.03, boardZ(0.03)), V(0, 0.98, boardZ(0.98)), LW + 0.08, 0.016, mats.oak);
   for (const s of [-1, 1]) {
     k.beam(V(s * X, 0.03, postZ(0.03)), V(s * X, H, postZ(H)), POST, POST, mats.hinoki);
-    for (const y of [0.3, 0.72]) k.bolt(V(s * X, y, postZ(y) + POST / 2 + 0.002), V(0, 0, 1), mats.iron);
+    for (const y of [0.3, 0.75]) k.bolt(V(s * X, y, postZ(y) + POST / 2 + 0.002), V(0, 0, 1), mats.iron);
   }
 
-  const hangW = NEWS.H, hangH = NEWS.W; // the folded paper, turned on its side
-  const at = [];
+  const rungs = [];
   for (let i = 0; i < LADDER.rungs; i++) {
     const y = LADDER.top - i * LADDER.step;
     const z = rungZ(y);
-    k.dowel(V(-X - 0.03, y, z), V(X + 0.03, y, z), 0.006, mats.hinoki);
+    // the block the rod rests on: from the post forward, its top just under the rod
     for (const s of [-1, 1]) {
-      k.dowel(V(s * (LW / 2 - 0.045), y, z), V(s * (LW / 2 - 0.005), y, z), 0.0085, mats.sleeve);
       const z0 = postZ(y) - POST / 2, z1 = z + 0.012;
-      k.beam(V(s * X, y - 0.055, (z0 + z1) / 2), V(s * X, y - 0.007, (z0 + z1) / 2), POST + 0.004, z1 - z0, mats.hinoki);
+      k.beam(V(s * X, y - LADDER.rodR - 0.032, (z0 + z1) / 2), V(s * X, y - LADDER.rodR, (z0 + z1) / 2), POST + 0.004, z1 - z0, mats.hinoki);
     }
-    at.push([-hangW / 2, y - 0.008 - hangH / 2, z - 0.004]);
+    rungs.push([0, y, z]);
   }
 
   const g = k.build('newspaper_ladder');
   g.userData.boardZ = boardZ(0.03); // where its board meets the base, to line it up
   // where the photo-style camera aims: a point at rung depth, in this stand's space
   g.userData.shotFocus = (x, y) => new THREE.Vector3(x, y, rungZ(y));
-  // slot at the paper's left edge, half way down; +Y turned to point right
-  at.forEach(([x, y, z], i) => slot(`slot_newspaper_${String(i + 1).padStart(2, '0')}`, g, x, y, z, deg(-3.4), deg(-90)));
+  // a slot on each rung's axis; the paper brings its own rod, sized to the stand
+  const rod = { half: X + 0.03, sleeveX: LW / 2 - 0.03, wood: mats.hinoki, sleeve: mats.sleeve };
+  rungs.forEach(([x, y, z], i) => {
+    const sl = slot(`slot_newspaper_${String(i + 1).padStart(2, '0')}`, g, x, y, z, deg(-4));
+    sl.userData.rod = rod;
+  });
   return g;
 }
 

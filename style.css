@@ -1,6 +1,5 @@
 /* Style reference: frontoffice.co. White paper, black ink, hairline rules,
-   a light flared serif for display and a quiet grotesk with tracked
-   uppercase labels. See fonts.css for the typefaces. */
+   one quiet grotesk throughout, with tracked uppercase labels. */
 
 :root {
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
@@ -17,7 +16,7 @@
   --disabled: #a0a0a0;
   --panel-w: 400px;
 
-  --display: "ABC Arizona Flare", "Marcellus", Georgia, serif;
+  --display: "Archivo", -apple-system, Helvetica, Arial, sans-serif;
   --text: "Reform Grotesk", "Archivo", -apple-system, Helvetica, Arial, sans-serif;
 
   --out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -60,18 +59,18 @@ body {
   text-transform: uppercase;
   z-index: 2;
 }
-.bar h1 { margin: 0; flex: 1; display: flex; justify-content: space-between; font: inherit; letter-spacing: inherit; }
+.bar h1 { margin: 0; font: inherit; letter-spacing: inherit; text-transform: none; }
 
 /* caption block, bottom left */
 .intro {
   position: fixed; left: var(--space-6); bottom: var(--space-6);
-  max-width: 560px; display: grid; gap: var(--space-2);
+  max-width: 360px; display: grid; gap: var(--space-2);
   pointer-events: none;
 }
 .intro, .index { transition: opacity 400ms var(--out), visibility 400ms; }
 body.reading .intro, body.reading .index { opacity: 0; visibility: hidden; }
-.intro .pair { display: flex; justify-content: space-between; max-width: 440px; }
-.intro h2 { margin: 0; font: 300 var(--text-3xl)/1.1 var(--display); letter-spacing: 0.01em; text-wrap: balance; }
+
+.intro h2 { margin: 0; font: 400 var(--text-xl)/1.2 var(--display); letter-spacing: 0; text-wrap: balance; }
 .intro p { margin: 0; color: var(--mute); max-width: 440px; }
 
 .index { position: fixed; right: var(--space-6); bottom: var(--space-6); }
@@ -117,14 +116,14 @@ body.reading .intro, body.reading .index { opacity: 0; visibility: hidden; }
 .reader[hidden] { display: none; }
 .reader:not(.open) { pointer-events: none; }
 .reader header { display: grid; gap: var(--space-2); }
-.reader h2 { margin: 0; font: 300 40px/1.1 var(--display); letter-spacing: 0.01em; text-wrap: balance; }
+.reader h2 { margin: 0; font: 400 32px/1.15 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
 .meta { margin: 0; color: var(--mute); }
 .eyebrow { margin: 0; color: var(--mute); }
 
 .pages { flex: 1; overflow: auto; display: grid; align-content: start; gap: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--hair); }
 .pages article { display: grid; gap: var(--space-2); }
 .pages .kicker { margin: 0; color: var(--mute); }
-.pages h3 { margin: 0; font: 300 var(--text-xl)/1.2 var(--display); text-wrap: balance; }
+.pages h3 { margin: 0; font: 500 var(--text-lg)/1.25 var(--display); text-wrap: balance; }
 .pages p:last-child { margin: 0; color: var(--body); text-wrap: pretty; }
 
 .reader footer { display: grid; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--hair); }
@@ -147,13 +146,13 @@ body.reading .intro, body.reading .index { opacity: 0; visibility: hidden; }
   position: fixed; inset: 0; display: grid; place-items: center; background: var(--paper);
   transition: opacity 600ms var(--out); z-index: 3;
 }
-.loading p { margin: 0; font: 300 var(--text-xl)/1.2 var(--display); }
+.loading p { margin: 0; font: 400 var(--text-lg)/1.2 var(--display); }
 .loading.done { opacity: 0; pointer-events: none; }
 
 @media (max-width: 899px) {
   .bar { height: 56px; padding: 0 var(--space-4); font-size: var(--text-lg); }
   .intro { left: var(--space-4); right: var(--space-4); bottom: 88px; }
-  .intro h2 { font-size: 32px; }
+  .intro h2 { font-size: var(--text-lg); }
   .intro p { display: none; }
   .index { left: var(--space-4); right: var(--space-4); bottom: var(--space-4); }
   .index summary { width: 100%; justify-content: center; }
@@ -165,7 +164,7 @@ body.reading .intro, body.reading .index { opacity: 0; visibility: hidden; }
     gap: var(--space-4);
     transform: translateY(24px);
   }
-  .reader h2 { font-size: 32px; }
+  .reader h2 { font-size: var(--text-xl); }
   .keys { display: none; }
 }
 

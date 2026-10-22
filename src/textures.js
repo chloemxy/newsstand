@@ -15,7 +15,7 @@ const F = {
 export async function loadFonts() {
   const faces = [
     `900 80px ${F.display}`, `700 40px ${F.display}`, `italic 600 40px ${F.display}`,
-    `400 24px ${F.news}`, `700 24px ${F.news}`, `400 20px ${F.ui}`, `600 20px ${F.ui}`,
+    `400 24px ${F.news}`, `700 24px ${F.news}`, `italic 400 24px ${F.news}`, `400 20px ${F.ui}`, `600 20px ${F.ui}`, `800 20px ${F.ui}`,
   ];
   try { await Promise.all(faces.map((f) => document.fonts.load(f))); } catch { /* fall back to system fonts */ }
 }
@@ -107,43 +107,201 @@ export function paintMagPage(page, number, mag, img) {
   return c;
 }
 
-// Newspaper page, full sheet 786 × 1200 (the folded half is the top 600).
-export function paintNewsPage(paper, page, index, img) {
-  const [c, ctx] = canvas(786, 1200);
-  ctx.fillStyle = NEWSPRINT; ctx.fillRect(0, 0, 786, 1200);
-  if (img) { drawCover(ctx, img, 786, 1200); return c; }
-  ctx.fillStyle = INK; ctx.textAlign = 'center';
-  let y;
-  if (index === 0) {
-    const mast = paper.title.toUpperCase();
-    fitFont(ctx, mast, `700 {s}px ${F.news}`, 720, 92);
-    ctx.fillText(mast, 393, 128);
-    ctx.fillRect(32, 152, 722, 3); ctx.fillRect(32, 196, 722, 1);
-    ctx.font = `400 18px ${F.news}`; ctx.fillText(paper.date, 393, 182);
-    y = 272;
+// ---- Newspapers: tabloid pages, 780 × 1020 (29 × 38 cm), after the
+// reference photo: a stacked serif masthead, rules and a date line, then a
+// front page in one of three styles, with real-looking columns of type.
+
+const NEWS_W = 780, NEWS_H = 1020, M = 36;
+
+function seeded(seed) {
+  let s = seed >>> 0 || 1;
+  return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+}
+const hash = (str) => [...str].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+// A grainy black-and-white "photograph": soft shapes, light from one side.
+function drawPhoto(ctx, x, y, w, h, seed) {
+  const r = seeded(seed);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  const g = ctx.createLinearGradient(x, y, x + w, y + h);
+  const base = 90 + r() * 70;
+  g.addColorStop(0, `rgb(${base + 60},${base + 60},${base + 58})`);
+  g.addColorStop(1, `rgb(${base - 40},${base - 40},${base - 42})`);
+  ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  ctx.filter = 'blur(5px)';
+  for (let i = 0; i < 14; i++) {
+    const v = Math.floor(20 + r() * 200);
+    ctx.fillStyle = `rgb(${v},${v},${v})`;
+    const bx = x + r() * w, by = y + h * (0.3 + r() * 0.8), bw = 30 + r() * w * 0.35, bh = 30 + r() * h * 0.6;
+    if (r() < 0.5) ctx.fillRect(bx - bw / 2, by - bh, bw, bh);
+    else { ctx.beginPath(); ctx.ellipse(bx, by - bh / 2, bw / 2, bh / 2, 0, 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.filter = 'none';
+  // print grain
+  const img = ctx.getImageData(x, y, w, h);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (r() - 0.5) * 38;
+    img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n;
+  }
+  ctx.putImageData(img, x, y);
+  ctx.restore();
+}
+
+// A flat colour illustration: crossed fork and knife, or a bar chart.
+function drawIllustration(ctx, x, y, w, h, colour, seed) {
+  ctx.save();
+  ctx.fillStyle = colour; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fff';
+  const cx = x + w / 2, cy = y + h / 2, u = Math.min(w, h);
+  if (seed % 2 === 0) {
+    ctx.lineWidth = u * 0.035; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - u * 0.18, cy - u * 0.28); ctx.lineTo(cx + u * 0.18, cy + u * 0.28); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + u * 0.18, cy - u * 0.28); ctx.lineTo(cx - u * 0.18, cy + u * 0.28); ctx.stroke();
+    for (const d of [-1, 0, 1]) {
+      ctx.beginPath(); ctx.moveTo(cx - u * 0.18 + d * u * 0.03, cy - u * 0.36); ctx.lineTo(cx - u * 0.18 + d * u * 0.03, cy - u * 0.26); ctx.stroke();
+    }
+    ctx.fillRect(x + w * 0.08, y + h * 0.12, w * 0.22, h * 0.08);
   } else {
-    ctx.font = `700 22px ${F.news}`; ctx.fillText(`${paper.title}  ·  ${page.kicker}`, 393, 64);
-    ctx.fillRect(32, 84, 722, 2);
-    y = 160;
+    for (let i = 0; i < 5; i++) {
+      const bh = h * (0.2 + 0.12 * ((i * 7 + seed) % 5));
+      ctx.fillRect(x + w * 0.12 + i * w * 0.16, y + h * 0.85 - bh, w * 0.1, bh);
+    }
+    ctx.fillRect(x + w * 0.08, y + h * 0.86, w * 0.84, 4);
   }
+  ctx.restore();
+}
+
+// Columns of small type, filled with the paper's own copy.
+function columns(ctx, copy, x, y, w, h, cols, size = 15) {
+  const gap = 16, cw = (w - gap * (cols - 1)) / cols, lh = Math.round(size * 1.28);
+  ctx.font = `400 ${size}px ${F.news}`;
+  const words = copy.split(/\s+/);
+  let wi = 0;
+  for (let c = 0; c < cols; c++) {
+    const cx = x + c * (cw + gap);
+    ctx.fillStyle = '#2a2723';
+    for (let ly = y + size; ly <= y + h; ly += lh) {
+      let line = '';
+      for (;;) {
+        const next = words[wi % words.length];
+        const test = line ? `${line} ${next}` : next;
+        if (ctx.measureText(test).width > cw && line) break;
+        line = test; wi++;
+      }
+      ctx.fillText(line, cx, ly);
+    }
+    if (c < cols - 1) { ctx.fillStyle = '#b8b1a5'; ctx.fillRect(cx + cw + gap / 2, y, 1, h); }
+  }
+}
+
+function masthead(ctx, paper) {
+  const hasThe = /^The\s+/i.test(paper.title);
+  const words = paper.title.replace(/^The\s+/i, '').toUpperCase().split(/\s+/);
+  ctx.fillStyle = '#1b1916';
+  if (hasThe) { ctx.font = `italic 400 22px ${F.news}`; ctx.fillText('The', M, M + 18); }
+  ctx.font = `700 58px ${F.news}`;
+  const half = Math.ceil(words.length / 2);
+  const lines = words.length > 1 ? [words.slice(0, half).join(' '), words.slice(half).join(' ')] : words;
+  let y = M + (hasThe ? 70 : 52);
+  for (const l of lines) { ctx.fillText(l, M, y); y += 54; }
+  ctx.font = `600 13px ${F.ui}`;
+  ctx.textAlign = 'right';
+  ctx.fillText('NEWS · LETTERS · LISTINGS', NEWS_W - M, M + 18);
+  ctx.fillText('£1.20', NEWS_W - M, M + 38);
   ctx.textAlign = 'left';
-  ctx.font = `700 ${index === 0 ? 56 : 48}px ${F.news}`;
-  y = wrap(ctx, page.headline, 32, y, 722, index === 0 ? 64 : 56, 3);
-  photoBlock(ctx, 32, y, 722, 360, '#3a352d');
-  y += 400;
-  // three columns: real copy in the first, column rules for the rest
-  const colW = 224, gap = 24;
-  ctx.font = `400 20px ${F.news}`; ctx.fillStyle = INK;
-  wrap(ctx, page.body, 32, y + 8, colW, 28, 20);
-  ctx.globalAlpha = 0.22;
-  for (let col = 1; col < 3; col++) {
-    const x = 32 + col * (colW + gap);
-    for (let ly = y; ly < 1160; ly += 28) ctx.fillRect(x, ly, colW - ((ly / 28) % 7 === 0 ? 72 : 0), 10);
+  y -= 28;
+  ctx.fillRect(M, y, NEWS_W - 2 * M, 3);
+  ctx.font = `400 14px ${F.news}`;
+  ctx.fillText(paper.date.toUpperCase(), M, y + 22);
+  ctx.fillRect(M, y + 32, NEWS_W - 2 * M, 1);
+  return y + 52;
+}
+
+const allCopy = (paper) => paper.pages.map((p) => `${p.headline}. ${p.body}`).join(' ');
+
+// Wraps condensed bold caps at the largest size that fits `maxH`.
+function poster(ctx, text, x, y, w, maxH) {
+  ctx.fillStyle = '#111';
+  ctx.fontStretch = 'condensed';
+  let size = 140, lines;
+  do {
+    ctx.font = `800 ${size}px ${F.ui}`;
+    lines = []; let line = '';
+    for (const wd of text.toUpperCase().split(' ')) {
+      const t = line ? `${line} ${wd}` : wd;
+      if (ctx.measureText(t).width > w && line) { lines.push(line); line = wd; } else line = t;
+    }
+    lines.push(line);
+    size -= 4;
+  } while (lines.length * size * 0.95 > maxH && size > 40);
+  const lh = (size + 4) * 0.95;
+  for (const l of lines) { y += lh; ctx.fillText(l, x, y); }
+  ctx.fontStretch = 'normal';
+  return y;
+}
+
+export function paintNewsPage(paper, page, index, img) {
+  const [c, ctx] = canvas(NEWS_W, NEWS_H);
+  ctx.fillStyle = NEWSPRINT; ctx.fillRect(0, 0, NEWS_W, NEWS_H);
+  if (img) { drawCover(ctx, img, NEWS_W, NEWS_H); return c; }
+  const seed = hash(paper.id) + index * 101;
+  const copy = allCopy(paper);
+  const W = NEWS_W - 2 * M;
+  let y;
+
+  if (index > 0) {
+    ctx.fillStyle = '#1b1916'; ctx.font = `700 18px ${F.news}`;
+    ctx.fillText(paper.title.toUpperCase(), M, M + 14);
+    ctx.textAlign = 'right'; ctx.fillText(page.kicker.toUpperCase(), NEWS_W - M, M + 14); ctx.textAlign = 'left';
+    ctx.fillRect(M, M + 26, W, 2);
+    ctx.font = `700 46px ${F.news}`;
+    y = wrap(ctx, page.headline, M, M + 90, W, 50, 3);
+    drawPhoto(ctx, M, y, W, 330, seed);
+    columns(ctx, `${page.body} ${copy}`, M, y + 350, W, NEWS_H - M - (y + 350), 3);
+    return c;
   }
-  ctx.globalAlpha = 1;
+
+  y = masthead(ctx, paper);
+  const style = paper.style || 'photo';
+  if (style === 'quote') {
+    y = poster(ctx, page.headline, M, y, W, NEWS_H * 0.6);
+    columns(ctx, copy, M, y + 26, W, NEWS_H - M - (y + 26), 3, 14);
+  } else if (style === 'illustration') {
+    const colW = W * 0.34;
+    columns(ctx, copy, M, y + 4, colW, 330, 1, 14);
+    drawIllustration(ctx, M + colW + 18, y + 4, W - colW - 18, 330, paper.accent || '#3f9a4a', seed);
+    ctx.fillStyle = '#111'; ctx.fontStretch = 'condensed'; ctx.font = `800 54px ${F.ui}`;
+    y = wrap(ctx, page.headline, M, y + 404, W, 56, 2);
+    ctx.fontStretch = 'normal';
+    columns(ctx, copy, M, y + 6, W, NEWS_H - M - (y + 6), 3, 14);
+  } else {
+    ctx.fillStyle = '#111'; ctx.font = `700 46px ${F.news}`;
+    y = wrap(ctx, page.headline, M, y + 44, W, 50, 3);
+    drawPhoto(ctx, M, y, W, 360, seed);
+    ctx.font = `italic 400 13px ${F.news}`; ctx.fillStyle = '#4a4640';
+    ctx.fillText(`${page.body.split('.')[0]}.`, M, y + 380);
+    columns(ctx, copy, M, y + 396, W, NEWS_H - M - (y + 396), 3, 14);
+  }
   return c;
 }
 
+// The back page: listings in columns and a boxed advertisement.
+export function paintNewsBack(paper) {
+  const [c, ctx] = canvas(NEWS_W, NEWS_H);
+  ctx.fillStyle = NEWSPRINT; ctx.fillRect(0, 0, NEWS_W, NEWS_H);
+  ctx.fillStyle = '#1b1916'; ctx.font = `700 18px ${F.news}`;
+  ctx.fillText(paper.title.toUpperCase(), M, M + 14);
+  ctx.fillRect(M, M + 26, NEWS_W - 2 * M, 2);
+  columns(ctx, allCopy(paper), M, M + 44, NEWS_W - 2 * M, 560, 4, 13);
+  ctx.strokeStyle = '#1b1916'; ctx.lineWidth = 3;
+  ctx.strokeRect(M, 660, NEWS_W - 2 * M, NEWS_H - M - 660);
+  ctx.fillStyle = '#1b1916'; ctx.font = `700 40px ${F.news}`; ctx.textAlign = 'center';
+  ctx.fillText('CLASSIFIEDS', NEWS_W / 2, 730);
+  ctx.textAlign = 'left';
+  columns(ctx, allCopy(paper), M + 20, 760, NEWS_W - 2 * M - 40, NEWS_H - M - 790, 3, 13);
+  return c;
+}
 
 export function loadImage(url) {
   return new Promise((resolve, reject) => {

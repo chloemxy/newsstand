@@ -114,7 +114,9 @@ export class Reader {
       const own = this.meshes.filter((m) => m.userData.item === this.held);
       const h = this.hit(e, own);
       if (!h) { this.putBack(); return; }
+      // which half was clicked, measured in reading space
       const local = this.held.root.worldToLocal(h.point.clone());
+      if (this.held.readQuat) local.applyQuaternion(this.held.readQuat);
       this.turn(local.x >= this.held.frame(true).cx ? 1 : -1);
     }
   }
@@ -143,7 +145,9 @@ export class Reader {
     position.multiplyScalar(k);
     // the dimmer goes between the held item and the stand
     const dimZ = -Math.min(d * k + 0.15, Math.max(d * k + 0.005, near * 0.95));
-    return { position, quaternion: new THREE.Quaternion(), d: d * k, scale: k, dimZ };
+    // a newspaper turns upright so its rod runs down the left spine
+    const quaternion = item.readQuat ? item.readQuat.clone() : new THREE.Quaternion();
+    return { position, quaternion, d: d * k, scale: k, dimZ };
   }
 
   async pick(item, opener) {

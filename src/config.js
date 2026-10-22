@@ -22,8 +22,8 @@ export const CONFIG = {
   //   azimuth: radians round from straight on (negative = from the left)
   //   elevation: radians above level
   //   focus: the point aimed at, in the newspaper stand's own space (metres)
-  //   span: metres that fit across the shorter side of the screen
-  shot: { azimuth: -0.7, elevation: 0.74, fov: 30, focus: [0.05, 0.74], span: 0.74 },
+  //   span: metres that fit top to bottom; minWidth: metres always kept across
+  shot: { azimuth: -0.7, elevation: 0.74, fov: 30, focus: [0.02, 0.92], span: 2.1, minWidth: 1.0 },
 
   // In a GLB, the node to frame (e.g. an Empty parenting the stands).
   // Without it the whole model is framed.

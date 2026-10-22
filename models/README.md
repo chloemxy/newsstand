@@ -28,15 +28,18 @@ then rotate it so that, in Blender's axes:
 For a magazine leaning back on a shelf, that's a small tilt around X. Leave
 the Empty's scale at 1.
 
-**Newspapers on the ladder stand** hang over a dowel turned on their side, so
-the masthead runs down the right edge. For those, rotate the Empty 90° around
-Y so its +Z points **right**, and put it at the paper's **left edge, half way
-down** the hanging paper (19 cm below the dowel). Step each lower slot about
-8 mm toward the viewer so it overlaps the paper above, as the placeholder
-does in `src/stands.js`.
+**Newspapers on the ladder stand** bring their own rod: each paper is a
+tabloid folded over a dowel, and picking it up lifts the dowel off its
+blocks. So model the posts, board, base and the small blocks, but **not the
+rungs**. Put each `slot_newspaper_##` Empty on the **axis of a rung** (the
+centre of where the dowel rests), with no rotation beyond the stand's lean.
+The paper hangs from there, turned on its side with the masthead running down
+the right edge. Step each lower rung about 12 mm toward the viewer so the
+papers shingle, as the placeholder does in `src/stands.js`.
 
-Sizes the code uses: magazine 21 × 28 cm, folded newspaper 38 × 29 cm (the
-fold sits at the slot, the masthead half shows). Leave that much room.
+Sizes the code uses: magazine 21 × 28 cm; newspaper a 29 × 38 cm tabloid,
+hanging 29 cm down from its rung and 38 cm across, on a 12 mm dowel. Leave
+that much room.
 
 ## Optional
 

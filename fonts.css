@@ -1,20 +1,12 @@
-/* Typefaces, after frontoffice.co:
-   display  ABC Arizona Flare Light (Dinamo, commercial)
-   text     Reform Grotesk Regular (commercial)
+/* Typeface, after frontoffice.co's text face, Reform Grotesk (commercial).
+   Until you have a licence, Archivo loads from Google Fonts in index.html
+   as a free lookalike. Once licensed, drop the file in /fonts and uncomment
+   this rule; style.css already lists the real name first.
 
-   Until you have licences, free lookalikes load from Google Fonts in
-   index.html: Marcellus (a flared serif) and Archivo (a grotesk, set a
-   little narrow). Once licensed, drop the files in /fonts and uncomment
-   these rules. The font stacks in style.css and textures.js already list
-   the real names first, so nothing else needs to change. */
+   The newspaper and magazine pages painted inside the 3D scene use their
+   own print faces (Old Standard TT, Fraunces), set in src/textures.js. */
 
 /*
-@font-face {
-  font-family: "ABC Arizona Flare";
-  src: url("fonts/ABCArizonaFlare-Light.woff2") format("woff2");
-  font-weight: 300;
-  font-display: swap;
-}
 @font-face {
   font-family: "Reform Grotesk";
   src: url("fonts/Reform-GroteskRegular.woff2") format("woff2");
