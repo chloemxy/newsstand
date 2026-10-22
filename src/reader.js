@@ -1,13 +1,12 @@
-// Hover, pick up, open, turn pages, put back. The held item is parented to
-// the camera so it stays framed while reading, and the reader panel shows
-// the same pages as real text.
+// Hover, pick up, read, put back. Picking up is one continuous motion: a
+// newspaper lifts off its rod, its fold relaxes as it travels to the camera,
+// it straightens, then it flips open into a spread while it re-centres.
+// Nothing fades: the stand stays in view behind the paper. A small control
+// bar turns pages, and the page text is mirrored for screen readers.
 
 import * as THREE from 'three';
 import { tween, ease } from './anim.js';
 
-const PANEL_W = 448;     // panel width + its margin, keep in sync with --panel-w
-const SHEET = 0.45;      // phone bottom sheet height, share of the viewport
-const WIDE = 900;
 const $ = (id) => document.getElementById(id);
 
 export class Reader {
@@ -21,26 +20,14 @@ export class Reader {
     this.ray = new THREE.Raycaster();
     this.ndc = new THREE.Vector2();
     this.meshes = [];
-    for (const it of items) { it.hover = 0; it.root.traverse((o) => o.isMesh && this.meshes.push(o)); }
-
-    this.dim = new THREE.Mesh(
-      new THREE.PlaneGeometry(40, 40),
-      new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, fog: false, toneMapped: false }),
-    );
-    this.dim.visible = false;
-    this.dimTarget = 0;
-    camera.add(this.dim);
-
-    // a soft light over the reader's shoulder, only on while reading
-    this.lamp = new THREE.DirectionalLight('#fff4e2', 0);
-    this.lamp.position.set(0.4, 0.6, 0.3);
-    this.lamp.target.position.set(0, 0, -1);
-    camera.add(this.lamp, this.lamp.target);
+    for (const it of items) {
+      it.hover = 0;
+      for (const part of [it.root, it.rod]) part?.traverse((o) => o.isMesh && this.meshes.push(o));
+    }
 
     this.ui = {
-      tip: $('tip'), panel: $('reader'), kind: $('reader-kind'), title: $('reader-title'), meta: $('reader-meta'),
-      pages: $('reader-pages'), count: $('reader-count'), prev: $('reader-prev'), next: $('reader-next'),
-      close: $('reader-close'), index: $('index-list'),
+      tip: $('tip'), bar: $('reader'), text: $('reader-text'), count: $('reader-count'),
+      prev: $('reader-prev'), next: $('reader-next'), close: $('reader-close'), index: $('index-list'),
     };
     this.buildIndex();
     this.bind();
@@ -89,7 +76,6 @@ export class Reader {
   }
 
   move(e) {
-    // no hover while dragging the view, or items pop forward as the cursor sweeps past
     if (this.state !== 'idle' || e.pointerType === 'touch' || e.buttons) return;
     const h = this.hit(e, this.meshes);
     this.setHover(h ? h.object.userData.item : null);
@@ -111,44 +97,51 @@ export class Reader {
       const h = this.hit(e, this.meshes);
       if (h) this.pick(h.object.userData.item, null);
     } else if (this.state === 'reading') {
-      const own = this.meshes.filter((m) => m.userData.item === this.held);
+      // only the held paper itself, not the rod it left on the stand
+      const own = [];
+      this.held.root.traverse((o) => o.isMesh && own.push(o));
       const h = this.hit(e, own);
       if (!h) { this.putBack(); return; }
       // which half was clicked, measured in reading space
       const local = this.held.root.worldToLocal(h.point.clone());
       if (this.held.readQuat) local.applyQuaternion(this.held.readQuat);
-      this.turn(local.x >= this.held.frame(true).cx ? 1 : -1);
+      this.turn(local.x >= this.held.frame().cx ? 1 : -1);
     }
   }
 
-  // where the open item sits in camera space: as large as fits beside the panel
-  heldPose(item) {
-    const f = item.frame(true);
-    const vw = innerWidth, vh = innerHeight, wide = vw >= WIDE;
-    const bar = document.querySelector('.bar').offsetHeight;
-    // the free area in px, between the top bar and the panel or sheet
-    const free = wide
-      ? { l: 0, r: vw - PANEL_W, t: bar, b: vh }
-      : { l: 0, r: vw, t: bar, b: vh * (1 - SHEET) };
+  // Where the item sits in camera space for a given spread: as large as fits
+  // between the top bar and the control bar, centred.
+  heldPose(item, spread = item.spread) {
+    const f = item.frame(spread);
+    const vw = innerWidth, vh = innerHeight;
+    const top = document.querySelector('.bar').offsetHeight;
+    const bottom = vh - (this.ui.bar.offsetHeight || 72) - 24;
     const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
-    const availW = (free.r - free.l) / vw, availH = (free.b - free.t) / vh;
-    const fill = item.readFill ?? 0.84; // share of the free area the item may take
+    const availW = 1, availH = (bottom - top) / vh;
+    const fill = item.readFill ?? 0.84;
     const d = Math.max(f.h / (2 * tanH * availH * fill), f.w / (2 * tanH * this.camera.aspect * availW * fill));
-    const viewH = 2 * d * tanH, viewW = viewH * this.camera.aspect;
-    const sx = ((free.l + free.r) / 2 / vw - 0.5) * viewW;
-    const sy = (0.5 - (free.t + free.b) / 2 / vh) * viewH;
-    const position = new THREE.Vector3(sx - f.cx, sy - f.cy, -d);
-    // With a close camera the stand can be nearer than that. Then hold the
-    // item closer and smaller by the same factor, so it looks the same size
-    // but never slips behind a post.
+    const viewH = 2 * d * tanH;
+    const sy = (0.5 - (top + bottom) / 2 / vh) * viewH;
+    // the item's frame centre, turned into camera space
+    const c = new THREE.Vector3(f.cx, f.cy, 0);
+    const position = new THREE.Vector3(-c.x, sy - c.y, -d);
+    // never slip behind the stand: hold closer and smaller by the same factor
     const near = this.bounds ? this.bounds.distanceToPoint(this.camera.position) : Infinity;
     const k = Math.min(1, (near * 0.8) / d);
     position.multiplyScalar(k);
-    // the dimmer goes between the held item and the stand
-    const dimZ = -Math.min(d * k + 0.15, Math.max(d * k + 0.005, near * 0.95));
-    // a newspaper turns upright so its rod runs down the left spine
     const quaternion = item.readQuat ? item.readQuat.clone() : new THREE.Quaternion();
-    return { position, quaternion, d: d * k, scale: k, dimZ };
+    return { position, quaternion, scale: k };
+  }
+
+  // a point in the item's slot, expressed in camera space
+  slotPoint(item, offset) {
+    const world = item.slot.localToWorld(item.mount.clone().add(offset));
+    return this.camera.worldToLocal(world);
+  }
+
+  slotQuat(item) {
+    const q = item.slot.getWorldQuaternion(new THREE.Quaternion());
+    return this.camera.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(q);
   }
 
   async pick(item, opener) {
@@ -167,19 +160,39 @@ export class Reader {
     this.camera.updateMatrixWorld();
     this.camera.attach(root);
     const p0 = root.position.clone(), q0 = root.quaternion.clone(), s0 = root.scale.clone();
-    const to = this.heldPose(item);
-    this.dim.position.z = to.dimZ;
-    this.dim.visible = true;
-    this.dimTarget = 0.85;
 
-    await tween(800, (k) => {
-      root.position.lerpVectors(p0, to.position, k);
-      root.position.y += Math.sin(Math.PI * k) * 0.04;
-      root.quaternion.slerpQuaternions(q0, to.quaternion, k);
-      root.scale.lerpVectors(s0, new THREE.Vector3().setScalar(to.scale), k);
+    // 1. lift off the rod: up and toward you, the fold starting to relax
+    let pFrom = p0;
+    if (item.liftOffset) {
+      const pLift = this.slotPoint(item, item.liftOffset);
+      await tween(380, (k) => {
+        root.position.lerpVectors(p0, pLift, k);
+        item.flatten?.(0.2 * k);
+      }, ease.out);
+      pFrom = pLift;
+    }
+
+    // 2. travel to you, straightening on the way
+    const closed = this.heldPose(item, 0);
+    await tween(820, (k) => {
+      root.position.lerpVectors(pFrom, closed.position, k);
+      root.position.y += Math.sin(Math.PI * k) * 0.03;
+      root.quaternion.slerpQuaternions(q0, closed.quaternion, k);
+      root.scale.lerpVectors(s0, new THREE.Vector3().setScalar(closed.scale), k);
+      item.flatten?.(0.2 + 0.8 * k);
     });
-    await item.open();
-    this.showPanel();
+
+    // 3. open, re-centring as the spread widens
+    const open = this.heldPose(item, item.openSpread ?? 0);
+    const pc = root.position.clone();
+    await Promise.all([
+      item.open(),
+      tween(700, (k) => {
+        root.position.lerpVectors(pc, open.position, k);
+        root.scale.setScalar(THREE.MathUtils.lerp(closed.scale, open.scale, k));
+      }, ease.out),
+    ]);
+    this.showControls();
     this.state = 'reading';
   }
 
@@ -187,22 +200,40 @@ export class Reader {
     if (this.state !== 'reading') return;
     this.state = 'busy';
     const item = this.held, root = item.root;
-    this.hidePanel();
-    this.dimTarget = 0;
-    await item.close();
+    this.hideControls();
 
-    // the home pose, expressed in camera space
-    const home = item.slot.matrixWorld.clone().multiply(new THREE.Matrix4().makeTranslation(item.mount));
-    const local = this.camera.matrixWorld.clone().invert().multiply(home);
-    const p1 = new THREE.Vector3(), q1 = new THREE.Quaternion(), s1 = new THREE.Vector3();
-    local.decompose(p1, q1, s1);
+    // 1. close, re-centring as it narrows
+    const closed = this.heldPose(item, 0);
+    const pc = root.position.clone(), sc = root.scale.x;
+    await Promise.all([
+      item.close(),
+      tween(600, (k) => {
+        root.position.lerpVectors(pc, closed.position, k);
+        root.scale.setScalar(THREE.MathUtils.lerp(sc, closed.scale, k));
+      }),
+    ]);
+
+    // 2. travel back, the fold returning on the way
+    this.camera.updateMatrixWorld();
+    const q1 = this.slotQuat(item);
+    const pHome = this.slotPoint(item, new THREE.Vector3());
+    const pAbove = item.liftOffset ? this.slotPoint(item, item.liftOffset) : pHome;
     const p0 = root.position.clone(), q0 = root.quaternion.clone(), s0 = root.scale.clone();
-    await tween(700, (k) => {
-      root.position.lerpVectors(p0, p1, k);
-      root.position.y += Math.sin(Math.PI * k) * 0.04;
+    await tween(760, (k) => {
+      root.position.lerpVectors(p0, pAbove, k);
+      root.position.y += Math.sin(Math.PI * k) * 0.03;
       root.quaternion.slerpQuaternions(q0, q1, k);
-      root.scale.lerpVectors(s0, s1, k);
+      root.scale.lerpVectors(s0, new THREE.Vector3(1, 1, 1), k);
+      item.flatten?.(1 - 0.8 * k);
     });
+
+    // 3. settle back over the rod
+    if (item.liftOffset) {
+      await tween(360, (k) => {
+        root.position.lerpVectors(pAbove, pHome, k);
+        item.flatten?.(0.2 * (1 - k));
+      }, ease.inOut);
+    }
 
     item.slot.add(root);
     root.position.copy(item.mount);
@@ -211,49 +242,50 @@ export class Reader {
     this.held = null;
     this.controls.enabled = true;
     this.state = 'idle';
+    document.body.classList.remove('reading');
     (this.opener || this.canvas).focus({ preventScroll: true });
   }
 
   async turn(dir) {
     if (this.state !== 'reading') return;
+    const item = this.held, root = item.root;
+    const next = THREE.MathUtils.clamp(item.spread + dir, 0, item.spreadCount - 1);
+    if (next === item.spread) return;
     this.state = 'busy';
-    const moved = await this.held.turn(dir);
-    if (moved) this.renderPanel();
+    // re-centre in step with the page, since an open spread is wider
+    const to = this.heldPose(item, next);
+    const pc = root.position.clone(), sc = root.scale.x;
+    await Promise.all([
+      item.turn(dir),
+      tween(600, (k) => {
+        root.position.lerpVectors(pc, to.position, k);
+        root.scale.setScalar(THREE.MathUtils.lerp(sc, to.scale, k));
+      }),
+    ]);
+    this.renderControls();
     this.state = 'reading';
   }
 
-  showPanel() {
-    this.renderPanel();
-    document.body.classList.add('reading');
-    this.ui.panel.hidden = false;
-    requestAnimationFrame(() => this.ui.panel.classList.add('open'));
-    this.ui.close.focus({ preventScroll: true });
+  showControls() {
+    this.renderControls();
+    this.ui.bar.hidden = false;
+    this.ui.next.focus({ preventScroll: true });
   }
 
-  hidePanel() {
-    const p = this.ui.panel;
-    p.classList.remove('open');
-    document.body.classList.remove('reading');
-    setTimeout(() => { if (!p.classList.contains('open')) p.hidden = true; }, 250);
+  hideControls() {
+    this.ui.bar.hidden = true;
   }
 
-  renderPanel() {
+  renderControls() {
     const it = this.held, ui = this.ui;
-    ui.kind.textContent = it.kind === 'magazine' ? 'Magazine' : 'Newspaper';
-    ui.title.textContent = it.title;
-    ui.meta.textContent = it.meta;
     ui.count.textContent = it.positionLabel();
     ui.prev.disabled = it.spread === 0;
     ui.next.disabled = it.spread >= it.spreadCount - 1;
-    ui.pages.replaceChildren(...it.visiblePages().map((i) => {
+    // the pages as text, for screen readers
+    ui.text.replaceChildren(...[it.title, ...it.visiblePages().map((i) => {
       const p = it.data.pages[i];
-      const a = document.createElement('article');
-      const k = document.createElement('p'); k.className = 'kicker'; k.textContent = p.kicker || '';
-      const h = document.createElement('h3'); h.textContent = p.headline || 'Image page';
-      const b = document.createElement('p'); b.textContent = p.body || '';
-      a.append(k, h, b);
-      return a;
-    }));
+      return `${p.kicker}. ${p.headline}. ${p.body}`;
+    })].map((t) => Object.assign(document.createElement('p'), { textContent: t })));
   }
 
   onResize() {
@@ -261,7 +293,6 @@ export class Reader {
     const to = this.heldPose(this.held);
     this.held.root.position.copy(to.position);
     this.held.root.scale.setScalar(to.scale);
-    this.dim.position.z = to.dimZ;
   }
 
   update(dt) {
@@ -274,9 +305,5 @@ export class Reader {
       if (it.applyHover) it.applyHover(it.hover); // newspapers tip up from one side
       else it.root.position.copy(it.mount).addScaledVector(it.hoverLift, it.hover);
     }
-    const m = this.dim.material;
-    m.opacity += (this.dimTarget - m.opacity) * (1 - Math.exp(-dt * 8));
-    this.lamp.intensity += (this.dimTarget * 1.2 - this.lamp.intensity) * (1 - Math.exp(-dt * 8));
-    if (this.dimTarget === 0 && m.opacity < 0.01) { m.opacity = 0; this.dim.visible = false; }
   }
 }

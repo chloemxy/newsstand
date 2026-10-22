@@ -39,23 +39,13 @@
 
   <div id="tip" class="tip label" role="tooltip" hidden></div>
 
-  <aside id="reader" class="reader" aria-labelledby="reader-title" hidden>
-    <header>
-      <p id="reader-kind" class="eyebrow label"></p>
-      <h2 id="reader-title"></h2>
-      <p id="reader-meta" class="meta"></p>
-    </header>
-    <div id="reader-pages" class="pages" aria-live="polite"></div>
-    <footer>
-      <div class="pager">
-        <button id="reader-prev" type="button" class="btn ghost label" aria-label="Previous page">Previous</button>
-        <span id="reader-count" class="count label"></span>
-        <button id="reader-next" type="button" class="btn ghost label" aria-label="Next page">Next</button>
-      </div>
-      <button id="reader-close" type="button" class="btn label">Put it back</button>
-      <p class="keys label">← → to turn · Esc to close</p>
-    </footer>
-  </aside>
+  <div id="reader" class="reader" role="group" aria-label="Reading" hidden>
+    <button id="reader-prev" type="button" class="btn ghost label" aria-label="Previous page">Back</button>
+    <span id="reader-count" class="count label" aria-live="polite"></span>
+    <button id="reader-next" type="button" class="btn ghost label" aria-label="Next page">Next</button>
+    <button id="reader-close" type="button" class="btn label">Put back</button>
+  </div>
+  <div id="reader-text" class="sr-only" aria-live="polite"></div>
 
   <div id="loading" class="loading"><p>Stocking the shelves…</p></div>
 

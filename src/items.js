@@ -100,7 +100,7 @@ export class Magazine {
   }
 
   // the area the open item covers, in local space
-  frame(open = true) {
+  frame(spread = this.spread, open = true) {
     const { W, H } = MAG;
     return open ? { w: 2 * W, h: H, cx: -W / 2, cy: 0 } : { w: W, h: H, cx: 0, cy: 0 };
   }
@@ -231,66 +231,99 @@ const defaultRod = {
   sleeve: new THREE.MeshStandardMaterial({ color: '#1c1c1c', roughness: 0.5 }),
 };
 
+// A flat page with its UVs worked out from position, so each face can show
+// the right page whichever way it faces. Spans x in [-H/2, H/2] (page
+// height) and y in [-W, 0] (page width, spine at y = 0), at depth z.
+function pagePlane(W, H, z, facing, uvOf) {
+  const g = new THREE.PlaneGeometry(H, W, 1, 1).translate(0, -W / 2, 0);
+  if (facing < 0) g.rotateY(Math.PI);
+  g.translate(0, 0, z);
+  const pos = g.attributes.position, uv = g.attributes.uv;
+  for (let i = 0; i < pos.count; i++) uv.setXY(i, ...uvOf(pos.getX(i), pos.getY(i)));
+  return g;
+}
+
 export class Newspaper {
   constructor(data, slotData = {}) {
     const { W, H } = NEWS;
     const rod = { ...defaultRod, ...(slotData.rod || {}) };
     this.kind = 'newspaper';
     this.data = data;
-    this.spread = 0;
+    this.spread = 0;          // 0: closed, front page; 1: open, pages 2–3
+    this.openSpread = 1;      // what picking up opens to
     this.cache = new Map();
     this.mount = new THREE.Vector3(0, 0, 0);          // the slot sits on the rod's axis
-    // on hover one end of the rod lifts off its block (see applyHover()); the
-    // paper stays at its depth in the stack, so the papers in front of it
-    // still partly cover it
-    this.hoverLift = new THREE.Vector3(0, 0, 0);
+    this.hoverLift = new THREE.Vector3(0, 0, 0);       // hover tips in place (applyHover)
+    this.liftOffset = new THREE.Vector3(0, 0.07, 0.05); // picking up lifts it off the rod first
     this.readQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+    this.readFill = 0.8;
 
     this.root = new THREE.Group();
     this.root.name = `newspaper_${data.id}`;
     this.rodHalf = rod.half;
-    this.readFill = 0.72; // held further back than a magazine, rod and all in view
 
-    // the steel rod and its sleeves travel with the paper
-    const rodMesh = new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R, DOWEL_R, rod.half * 2, 24).rotateZ(Math.PI / 2), rod.metal);
-    this.root.add(rodMesh);
+    // The steel rod and its sleeves stay on the stand when the paper is
+    // picked up; main.js adds this group to the slot beside the paper.
+    this.rod = new THREE.Group();
+    this.rod.name = `rod_${data.id}`;
+    this.rod.add(new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R, DOWEL_R, rod.half * 2, 24).rotateZ(Math.PI / 2), rod.metal));
     for (const s of [-1, 1]) {
       const sl = new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R + 0.0022, DOWEL_R + 0.0022, 0.045, 20).rotateZ(Math.PI / 2), rod.sleeve);
       sl.position.x = s * rod.sleeveX;
-      this.root.add(sl);
+      this.rod.add(sl);
     }
 
-    // the sheets, on a pivot through the page's vertical centre for page turns
-    this.frontMat = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide });
+    // the folded sheets, draped over the rod; they straighten as a morph
+    this.frontMat = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide, map: this.page(0) });
     this.backMat = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide, map: tex(paintNewsBack(data)) });
     const inner = new THREE.MeshStandardMaterial({ color: '#e2dbcc', roughness: 0.95, side: THREE.DoubleSide });
-    this.pivot = new THREE.Group();
-    this.pivot.position.y = -W / 2;
-    this.sheets = [];
+    this.sheets = new THREE.Group();
+    this.sheetMeshes = [];
     for (let i = 0; i < SHEETS; i++) {
       const m = new THREE.Mesh(sheetGeometry(i, W, H), i === 0 ? [this.frontMat, this.backMat] : [inner, inner]);
-      m.position.y = W / 2;
       m.morphTargetInfluences = [0];
-      this.pivot.add(m);
-      this.sheets.push(m);
+      this.sheets.add(m);
+      this.sheetMeshes.push(m);
     }
-    this.root.add(this.pivot);
+    this.root.add(this.sheets);
+
+    // The paper once straight: a cover hinged at the spine (front page out,
+    // page 2 inside) over a block (page 3, back page behind). It takes over
+    // from the straightened sheets, which look identical at that moment.
+    const front = (x, y) => [-y / W, (x + H / 2) / H];        // spine on the left
+    const inside = (x, y) => [(y + W) / W, (x + H / 2) / H];  // spine on the right
+    const z = 0.0019;
+    const pageMat = (map) => new THREE.MeshStandardMaterial({ roughness: 0.95, map });
+    this.book = new THREE.Group();
+    this.book.visible = false;
+    this.cover = new THREE.Group();
+    this.cover.add(
+      new THREE.Mesh(pagePlane(W, H, z, 1, front), pageMat(this.page(0))),
+      new THREE.Mesh(pagePlane(W, H, z - 0.0006, -1, inside), pageMat(this.page(1))),
+    );
+    this.book.add(
+      this.cover,
+      new THREE.Mesh(pagePlane(W, H, -0.0006, 1, front), pageMat(this.page(2))),
+      new THREE.Mesh(pagePlane(W, H, -z, -1, inside), pageMat(this.backMat.map)),
+    );
+    this.root.add(this.book);
+
     markMeshes(this.root, this);
-    this.showSpread(0);
+    markMeshes(this.rod, this);
   }
 
   get pageCount() { return this.data.pages.length; }
-  get spreadCount() { return this.pageCount; }
+  get spreadCount() { return 2; }
   get title() { return this.data.title; }
   get meta() { return this.data.date; }
-  visiblePages() { return [this.spread]; }
-  positionLabel() { return `Page ${this.spread + 1} of ${this.pageCount}`; }
+  visiblePages() { return this.spread ? [1, 2] : [0]; }
+  positionLabel() { return this.spread ? 'Pages 2–3' : 'Front page'; }
 
-  // the area the paper and its rod cover, in reading (camera) space after
-  // readQuat: the rod down the left at x = 0, the page to its right
-  frame() {
-    const { W } = NEWS, left = DOWEL_R + 0.003;
-    return { w: W + left, h: this.rodHalf * 2, cx: (W - left) / 2, cy: 0 };
+  // the area the paper covers in reading (camera) space after readQuat:
+  // closed, the page sits right of the spine; open, the spread straddles it
+  frame(spread = this.spread) {
+    const { W, H } = NEWS;
+    return spread ? { w: 2 * W, h: H, cx: 0, cy: 0 } : { w: W, h: H, cx: W / 2, cy: 0 };
   }
 
   page(i) {
@@ -303,37 +336,44 @@ export class Newspaper {
     return this.cache.get(i);
   }
 
-  showSpread(i) {
-    this.spread = i;
-    setMap(this.frontMat, this.page(i));
-  }
-
   // Hover: the right end of the rod lifts off its block while the left end
   // stays put as a pivot, so the paper tips up from one side, in place.
   // h runs 0..1.
   applyHover(h) {
     const a = 0.13 * h, r = this.rodHalf;
-    this.root.position.set(this.mount.x - r + r * Math.cos(a), this.mount.y + r * Math.sin(a), this.mount.z + this.hoverLift.z * h);
-    this.root.rotation.set(0, 0, a);
+    for (const o of [this.root, this.rod]) {
+      o.position.set(this.mount.x - r + r * Math.cos(a), this.mount.y + r * Math.sin(a), this.mount.z);
+      o.rotation.set(0, 0, a);
+    }
   }
 
-  flatten(k) { for (const m of this.sheets) m.morphTargetInfluences[0] = k; }
+  // 0: draped over the rod; 1: straight and closed
+  flatten(k) { for (const m of this.sheetMeshes) m.morphTargetInfluences[0] = k; }
 
-  open() { return tween(700, (k) => this.flatten(k), ease.out); }
+  // straight sheets → book (they match exactly), then flip the cover open
+  async open() {
+    this.flatten(1);
+    this.sheets.visible = false;
+    this.book.visible = true;
+    await tween(750, (k) => { this.cover.rotation.x = -Math.PI * k; }, ease.inOut);
+    this.spread = 1;
+  }
 
+  // flip the cover shut, then hand back to the sheets for the trip home
   async close() {
-    await tween(600, (k) => this.flatten(1 - k));
-    this.showSpread(0);
+    if (this.spread) await tween(650, (k) => { this.cover.rotation.x = -Math.PI * (1 - k); }, ease.inOut);
+    this.spread = 0;
+    this.book.visible = false;
+    this.sheets.visible = true;
   }
 
-  // spin the paper over like turning a sheet, swapping the page half way
   async turn(dir) {
-    const n = this.spread + dir;
-    if (n < 0 || n >= this.pageCount) return false;
-    const s = Math.sign(dir);
-    await tween(220, (k) => { this.pivot.rotation.x = s * (Math.PI / 2) * k; }, ease.in);
-    this.showSpread(n);
-    await tween(260, (k) => { this.pivot.rotation.x = -s * (Math.PI / 2) * (1 - k); }, ease.out);
-    return true;
+    if (dir > 0 && this.spread === 0) { await this.open(); return true; }
+    if (dir < 0 && this.spread === 1) {
+      await tween(650, (k) => { this.cover.rotation.x = -Math.PI * (1 - k); }, ease.inOut);
+      this.spread = 0;
+      return true;
+    }
+    return false;
   }
 }

@@ -21,7 +21,7 @@ Then open http://localhost:4517.
 | `src/content.js` | Magazine and newspaper titles, colours and pages. Edit this for your own content. |
 | `src/config.js` | Model path, camera, orbit limits, lights |
 | `src/items.js` | Magazines and newspapers with hinged covers, folds and page turns |
-| `src/reader.js` | Hover, pick up, open, turn pages, put back, reader panel |
+| `src/reader.js` | Hover, then one continuous pick-up: lift off the rod, travel, straighten, flip open; page turns and put back |
 | `src/stands.js` | Placeholder stands in hinoki and smoked oak, and slot lookup |
 | `src/materials.js` | Procedural finishes: wood grain, steel, frosted sleeves, plaster, stone |
 | `src/post.js` | Tone mapping, film grain and vignette |
@@ -39,6 +39,6 @@ Export the stands as `models/newsstand.glb` with slot Empties named `slot_magazi
 ## Controls
 
 - The view is a fixed camera, set up like a product photo (`shot` in `src/config.js`). Click a paper to pick it up.
-- Click the right or left half of the item, or press → / ←, to turn pages.
+- A paper lifts off its rod, comes to you and flips open into a spread. Click its right or left half, use Next / Back, or press → / ← to open and close it.
 - Press Esc or click outside the item to put it back.
 - "Browse the stand" lists every item for keyboard users.

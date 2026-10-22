@@ -35,7 +35,6 @@ body {
   -webkit-font-smoothing: antialiased;
   user-select: none; /* dragging the scene shouldn't select the page text */
 }
-.reader .pages { user-select: text; }
 
 #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
 
@@ -98,38 +97,18 @@ body.reading .intro, body.reading .index { opacity: 0; visibility: hidden; }
   background: var(--ink); color: var(--paper); white-space: nowrap;
 }
 
-/* reader: a white sheet with hairline edge, flush to the right */
+/* reading controls: a small bar under the paper; the paper itself is the reader */
 .reader {
-  position: fixed; top: 64px; right: 0; bottom: 0;
-  width: var(--panel-w);
-  display: flex; flex-direction: column; gap: var(--space-5);
-  padding: var(--space-6);
-  background: var(--paper); color: var(--ink);
-  border-left: 1px solid var(--hair);
-  opacity: 0; transform: translateX(24px);
-  transition: opacity 400ms var(--out), transform 600ms var(--out);
+  position: fixed; left: 50%; bottom: var(--space-5); transform: translateX(-50%);
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--paper); border: 1px solid var(--hair);
   z-index: 1;
 }
-.reader.open { opacity: 1; transform: none; }
-/* the panel sets its own display, so [hidden] needs restating; while it
-   fades out it must not catch the clicks and drags meant for the scene */
 .reader[hidden] { display: none; }
-.reader:not(.open) { pointer-events: none; }
-.reader header { display: grid; gap: var(--space-2); }
-.reader h2 { margin: 0; font: 400 32px/1.15 var(--display); letter-spacing: -0.01em; text-wrap: balance; }
-.meta { margin: 0; color: var(--mute); }
-.eyebrow { margin: 0; color: var(--mute); }
-
-.pages { flex: 1; overflow: auto; display: grid; align-content: start; gap: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--hair); }
-.pages article { display: grid; gap: var(--space-2); }
-.pages .kicker { margin: 0; color: var(--mute); }
-.pages h3 { margin: 0; font: 500 var(--text-lg)/1.25 var(--display); text-wrap: balance; }
-.pages p:last-child { margin: 0; color: var(--body); text-wrap: pretty; }
-
-.reader footer { display: grid; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--hair); }
-.pager { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.count { color: var(--mute); font-variant-numeric: tabular-nums; }
-.keys { margin: 0; color: var(--mute); text-align: center; }
+.count { min-width: 96px; text-align: center; color: var(--mute); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.reader .btn { white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 .btn {
   height: 48px; padding: 0 var(--space-5);
@@ -157,17 +136,11 @@ body.reading .intro, body.reading .index { opacity: 0; visibility: hidden; }
   .index { left: var(--space-4); right: var(--space-4); bottom: var(--space-4); }
   .index summary { width: 100%; justify-content: center; }
   .index ul { left: 0; width: auto; }
-  .reader {
-    top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 45vh;
-    padding: var(--space-5) var(--space-4) var(--space-4);
-    border-left: 0; border-top: 1px solid var(--hair);
-    gap: var(--space-4);
-    transform: translateY(24px);
-  }
-  .reader h2 { font-size: var(--text-xl); }
-  .keys { display: none; }
+  .reader { left: var(--space-4); right: var(--space-4); bottom: var(--space-4); transform: none; justify-content: space-between; gap: var(--space-1); }
+  .reader .count { min-width: 0; }
+  .reader .btn { padding: 0 var(--space-3); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reader, .loading, .btn { transition: none; }
+  .loading, .btn { transition: none; }
 }

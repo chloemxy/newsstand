@@ -77,6 +77,7 @@ async function start() {
     item.slot = slot;
     item.root.position.copy(item.mount);
     slot.add(item.root);
+    if (item.rod) slot.add(item.rod); // a newspaper's rod stays on the stand
     items.push(item);
   });
   if (CONFIG.modelUrl || CONFIG.showMagazines) place(magazines, slots.magazines, Magazine);
