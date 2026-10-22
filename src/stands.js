@@ -124,56 +124,65 @@ function magazineRack(mats) {
 
   const g = k.build('magazine_rack');
   g.userData.boardZ = boardZ;
+  g.userData.width = RW + 0.12 + 0.02;
   let n = 0;
   for (const y of [1.2, 0.76, 0.32]) for (const x of [-0.155, 0.155]) slot(`slot_magazine_${String(++n).padStart(2, '0')}`, g, x, y, -0.03, deg(-12));
   return g;
 }
 
-// Ladder stand after the reference photo: two pine posts leaning back
-// slightly, an MDF board behind the lower half on split MDF base slabs, and
-// a small pine block under each end of every rung. The rungs themselves
-// belong to the newspapers (each paper is folded over its own rod), so
-// picking a paper up lifts the rod off its blocks.
-export const LADDER = { rungs: 9, top: 1.5, step: 0.1, rodR: 0.006 };
+// Ladder stand after the reference photo, two papers wide: three pine posts
+// (two bays) leaning back slightly, an MDF board behind the lower half on
+// split MDF base slabs, and a small pine block under each end of every rod.
+// The rods belong to the newspapers (each paper is folded over its own
+// rod), so picking a paper up lifts its rod off the blocks.
+export const LADDER = { rungs: 7, bays: 2, top: 1.5, step: 0.1, rodR: 0.006 };
 
 function newspaperLadder(mats) {
   const k = new Kit();
-  const LW = 0.42, X = LW / 2 + POST / 2, H = HEIGHT;
+  const BAY = 0.42, H = HEIGHT, B = LADDER.bays;
+  const pitch = BAY + POST;                        // post centre to post centre
+  const postXs = Array.from({ length: B + 1 }, (_, i) => (i - B / 2) * pitch);
+  const bayXs = Array.from({ length: B }, (_, i) => (i + 0.5 - B / 2) * pitch);
+  const halfW = postXs.at(-1) + POST / 2;
   // each rung sits a little further forward than the one above, so the
   // papers shingle like the photo; the stand stays nearly upright
   const rungZ = (y) => 0.05 + 0.012 * (LADDER.top - y) / LADDER.step;
   const postZ = (y) => rungZ(y) - 0.03;
   const boardZ = (y) => postZ(y) - POST / 2 - 0.009;
 
-  base(k, mats, LW / 2 + 0.07, boardZ(0.03) + BASE_AHEAD, 0.24);
-  k.beam(V(0, 0.03, boardZ(0.03)), V(0, 0.98, boardZ(0.98)), LW + 0.08, 0.016, mats.oak);
-  for (const s of [-1, 1]) {
-    k.beam(V(s * X, 0.03, postZ(0.03)), V(s * X, H, postZ(H)), POST, POST, mats.hinoki);
-    for (const y of [0.3, 0.75]) k.bolt(V(s * X, y, postZ(y) + POST / 2 + 0.002), V(0, 0, 1), mats.iron);
+  base(k, mats, halfW + 0.07, boardZ(0.03) + BASE_AHEAD, 0.26);
+  k.beam(V(0, 0.03, boardZ(0.03)), V(0, 0.98, boardZ(0.98)), 2 * halfW + 0.04, 0.016, mats.oak);
+  for (const x of postXs) {
+    k.beam(V(x, 0.03, postZ(0.03)), V(x, H, postZ(H)), POST, POST, mats.hinoki);
+    for (const y of [0.3, 0.75]) k.bolt(V(x, y, postZ(y) + POST / 2 + 0.002), V(0, 0, 1), mats.iron);
   }
 
   const rungs = [];
   for (let i = 0; i < LADDER.rungs; i++) {
     const y = LADDER.top - i * LADDER.step;
     const z = rungZ(y);
-    // the block the rod rests on: from the post forward, its top just under the rod
-    for (const s of [-1, 1]) {
+    // the blocks the rods rest on: from each post forward, top just under the
+    // rods; the middle post's block carries the ends of both rods
+    for (const x of postXs) {
       const z0 = postZ(y) - POST / 2, z1 = z + 0.012;
-      k.beam(V(s * X, y - LADDER.rodR - 0.032, (z0 + z1) / 2), V(s * X, y - LADDER.rodR, (z0 + z1) / 2), POST + 0.004, z1 - z0, mats.hinoki);
+      k.beam(V(x, y - LADDER.rodR - 0.032, (z0 + z1) / 2), V(x, y - LADDER.rodR, (z0 + z1) / 2), POST + 0.004, z1 - z0, mats.hinoki);
     }
-    rungs.push([0, y, z]);
+    rungs.push([y, z]);
   }
 
   const g = k.build('newspaper_ladder');
   g.userData.boardZ = boardZ(0.03); // where its board meets the base, to line it up
+  g.userData.width = 2 * (halfW + 0.07); // base slab width
   // where the photo-style camera aims: a point at rung depth, in this stand's space
   g.userData.shotFocus = (x, y) => new THREE.Vector3(x, y, rungZ(y));
-  // a slot on each rung's axis; the paper brings its own rod, sized to the stand
-  const rod = { half: X + 0.03, sleeveX: LW / 2 - 0.03, metal: mats.steel, sleeve: mats.sleeve };
-  rungs.forEach(([x, y, z], i) => {
-    const sl = slot(`slot_newspaper_${String(i + 1).padStart(2, '0')}`, g, x, y, z, deg(-4));
+  // a slot on each rod's axis, one per bay per rung, filled down the left
+  // column first; each paper brings its own rod, spanning its bay
+  const rod = { half: pitch / 2 - 0.003, sleeveX: BAY / 2 - 0.03, metal: mats.steel, sleeve: mats.sleeve };
+  let n = 0;
+  bayXs.forEach((x) => rungs.forEach(([y, z]) => {
+    const sl = slot(`slot_newspaper_${String(++n).padStart(2, '0')}`, g, x, y, z, deg(-4));
     sl.userData.rod = rod;
-  });
+  }));
   return g;
 }
 
@@ -207,20 +216,21 @@ export function buildPlaceholder(scene, { magazines = true, room: withRoom = tru
   // even gap between them; a lone stand sits at the centre
   const LINE_Z = -0.1, GAP = 0.3;
   const row = [];
-  if (magazines) row.push([magazineRack(mats), 0.62 + 0.12 + 0.02]); // base slab widths
-  row.push([newspaperLadder(mats), 0.38 + 0.12 + 0.02]);
-  let x = -(row.reduce((w, [, rw]) => w + rw, 0) + GAP * (row.length - 1)) / 2;
+  if (magazines) row.push(magazineRack(mats));
+  row.push(newspaperLadder(mats));
+  let x = -(row.reduce((w, st) => w + st.userData.width, 0) + GAP * (row.length - 1)) / 2;
 
   const stands = new THREE.Group();
   stands.name = 'focus';
-  for (const [stand, w] of row) {
+  for (const stand of row) {
+    const w = stand.userData.width;
     stand.position.set(x + w / 2, 0, LINE_Z - stand.userData.boardZ);
     x += w + GAP;
     stands.add(stand);
   }
   room.add(stands);
   scene.add(room);
-  const ladder = row.at(-1)[0];
+  const ladder = row.at(-1);
   const shotFocus = (x, y) => ladder.localToWorld(ladder.userData.shotFocus(x, y));
   return { slots: collectSlots(room), focus: stands, shotFocus };
 }

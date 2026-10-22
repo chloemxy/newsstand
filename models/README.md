@@ -35,7 +35,9 @@ rungs**. Put each `slot_newspaper_##` Empty on the **axis of a rung** (the
 centre of where the dowel rests), with no rotation beyond the stand's lean.
 The paper hangs from there, turned on its side with the masthead running down
 the right edge. Step each lower rung about 12 mm toward the viewer so the
-papers shingle, as the placeholder does in `src/stands.js`.
+papers shingle, as the placeholder does in `src/stands.js`. For two columns,
+add a middle post and a slot per bay on every rung; slots fill in name order,
+so number the left column first.
 
 Sizes the code uses: magazine 21 × 28 cm; newspaper a 29 × 38 cm tabloid,
 hanging 29 cm down from its rung and 38 cm across, on a 12 mm dowel. Leave

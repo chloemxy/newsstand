@@ -134,37 +134,39 @@ async function start() {
 // from the front left, a gentle fill from the right, a rim from behind to
 // lift the stand off the backdrop.
 function addStudioLights(scene) {
-  scene.add(new THREE.HemisphereLight('#ffffff', '#e6e1d8', 0.8));
+  // warm tungsten studio: a big soft key, warm bounce from below, a cooler
+  // window fill, and a rim to separate the stand from the backdrop
+  scene.add(new THREE.HemisphereLight('#fff7ec', '#ddd0bb', 0.8));
 
-  const key = new THREE.DirectionalLight('#fff8ef', 2.2);
+  const key = new THREE.DirectionalLight('#ffe9d0', 2.3);
   key.position.set(-1.8, 2.8, 3.4);
   key.castShadow = true; // self-shadowing: rungs and papers onto the board
-  key.shadow.mapSize.setScalar(innerWidth < 700 ? 1024 : 2048);
-  Object.assign(key.shadow.camera, { left: -1, right: 1, top: 2.1, bottom: -0.2, near: 0.5, far: 10 });
+  key.shadow.mapSize.setScalar(innerWidth < 700 ? 2048 : 4096);
+  Object.assign(key.shadow.camera, { left: -1.2, right: 1.2, top: 2.1, bottom: -0.2, near: 0.5, far: 10 });
   key.shadow.radius = 4;
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.02;
   scene.add(key);
 
-  const fill = new THREE.DirectionalLight('#f1f4ff', 0.7);
+  const fill = new THREE.DirectionalLight('#e4ebf7', 0.5);
   fill.position.set(2.4, 1.3, 2.6);
   scene.add(fill);
 
-  const rim = new THREE.DirectionalLight('#ffffff', 0.6);
+  const rim = new THREE.DirectionalLight('#fff0dc', 0.6);
   rim.position.set(0.6, 2.6, -2.4);
   scene.add(rim);
 }
 
 // A vertical gradient, light at the top and slightly deeper at the bottom,
-// like a lit paper sweep in a photo studio.
+// like a lit cream paper sweep in an old photo studio.
 function studioBackdrop() {
   const c = document.createElement('canvas');
   c.width = 4; c.height = 512;
   const ctx = c.getContext('2d');
   const g = ctx.createLinearGradient(0, 0, 0, 512);
-  g.addColorStop(0, '#f7f7f5');
-  g.addColorStop(0.55, '#efeeeb');
-  g.addColorStop(1, '#dfddd8');
+  g.addColorStop(0, '#f4efe6');
+  g.addColorStop(0.55, '#ece4d6');
+  g.addColorStop(1, '#ddd2c0');
   ctx.fillStyle = g; ctx.fillRect(0, 0, 4, 512);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;

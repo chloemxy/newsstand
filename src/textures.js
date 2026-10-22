@@ -3,7 +3,7 @@
 // content.js to use your own artwork instead.
 
 export const PAPER = '#f4efe4';
-export const NEWSPRINT = '#ece6d6';
+export const NEWSPRINT = '#e8dcc1'; // yellowed
 const INK = '#1d1a16';
 
 const F = {
@@ -112,6 +112,7 @@ export function paintMagPage(page, number, mag, img) {
 // front page in one of three styles, with real-looking columns of type.
 
 const NEWS_W = 780, NEWS_H = 1020, M = 36;
+const INK_NEWS = '#231e19'; // warm, slightly faded black, like old newsprint ink
 
 function seeded(seed) {
   let s = seed >>> 0 || 1;
@@ -180,7 +181,7 @@ function columns(ctx, copy, x, y, w, h, cols, size = 15) {
   let wi = 0;
   for (let c = 0; c < cols; c++) {
     const cx = x + c * (cw + gap);
-    ctx.fillStyle = '#2a2723';
+    ctx.fillStyle = '#2e2822';
     for (let ly = y + size; ly <= y + h; ly += lh) {
       let line = '';
       for (;;) {
@@ -198,7 +199,7 @@ function columns(ctx, copy, x, y, w, h, cols, size = 15) {
 function masthead(ctx, paper) {
   const hasThe = /^The\s+/i.test(paper.title);
   const words = paper.title.replace(/^The\s+/i, '').toUpperCase().split(/\s+/);
-  ctx.fillStyle = '#1b1916';
+  ctx.fillStyle = INK_NEWS;
   if (hasThe) { ctx.font = `italic 400 22px ${F.news}`; ctx.fillText('The', M, M + 18); }
   ctx.font = `700 58px ${F.news}`;
   const half = Math.ceil(words.length / 2);
@@ -218,11 +219,28 @@ function masthead(ctx, paper) {
   return y + 52;
 }
 
+// Old paper: yellowing that deepens toward the edges, and foxing spots.
+function age(ctx, seed) {
+  const r = seeded(seed);
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+  const g = ctx.createRadialGradient(NEWS_W / 2, NEWS_H / 2, NEWS_W * 0.3, NEWS_W / 2, NEWS_H / 2, NEWS_H * 0.72);
+  g.addColorStop(0, 'rgba(175,135,70,0)');
+  g.addColorStop(1, 'rgba(160,115,50,0.28)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, NEWS_W, NEWS_H);
+  for (let i = 0; i < 34; i++) {
+    const x = r() * NEWS_W, y = r() * NEWS_H, rad = 2 + r() * r() * 16;
+    ctx.fillStyle = `rgba(150,108,55,${0.07 + r() * 0.13})`;
+    ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
 const allCopy = (paper) => paper.pages.map((p) => `${p.headline}. ${p.body}`).join(' ');
 
 // Wraps condensed bold caps at the largest size that fits `maxH`.
 function poster(ctx, text, x, y, w, maxH) {
-  ctx.fillStyle = '#111';
+  ctx.fillStyle = INK_NEWS;
   ctx.fontStretch = 'condensed';
   let size = 140, lines;
   do {
@@ -251,7 +269,7 @@ export function paintNewsPage(paper, page, index, img) {
   let y;
 
   if (index > 0) {
-    ctx.fillStyle = '#1b1916'; ctx.font = `700 18px ${F.news}`;
+    ctx.fillStyle = INK_NEWS; ctx.font = `700 18px ${F.news}`;
     ctx.fillText(paper.title.toUpperCase(), M, M + 14);
     ctx.textAlign = 'right'; ctx.fillText(page.kicker.toUpperCase(), NEWS_W - M, M + 14); ctx.textAlign = 'left';
     ctx.fillRect(M, M + 26, W, 2);
@@ -259,6 +277,7 @@ export function paintNewsPage(paper, page, index, img) {
     y = wrap(ctx, page.headline, M, M + 90, W, 50, 3);
     drawPhoto(ctx, M, y, W, 330, seed);
     columns(ctx, `${page.body} ${copy}`, M, y + 350, W, NEWS_H - M - (y + 350), 3);
+    age(ctx, seed);
     return c;
   }
 
@@ -271,18 +290,19 @@ export function paintNewsPage(paper, page, index, img) {
     const colW = W * 0.34;
     columns(ctx, copy, M, y + 4, colW, 330, 1, 14);
     drawIllustration(ctx, M + colW + 18, y + 4, W - colW - 18, 330, paper.accent || '#3f9a4a', seed);
-    ctx.fillStyle = '#111'; ctx.fontStretch = 'condensed'; ctx.font = `800 54px ${F.ui}`;
+    ctx.fillStyle = INK_NEWS; ctx.fontStretch = 'condensed'; ctx.font = `800 54px ${F.ui}`;
     y = wrap(ctx, page.headline, M, y + 404, W, 56, 2);
     ctx.fontStretch = 'normal';
     columns(ctx, copy, M, y + 6, W, NEWS_H - M - (y + 6), 3, 14);
   } else {
-    ctx.fillStyle = '#111'; ctx.font = `700 46px ${F.news}`;
+    ctx.fillStyle = INK_NEWS; ctx.font = `700 46px ${F.news}`;
     y = wrap(ctx, page.headline, M, y + 44, W, 50, 3);
     drawPhoto(ctx, M, y, W, 360, seed);
     ctx.font = `italic 400 13px ${F.news}`; ctx.fillStyle = '#4a4640';
     ctx.fillText(`${page.body.split('.')[0]}.`, M, y + 380);
     columns(ctx, copy, M, y + 396, W, NEWS_H - M - (y + 396), 3, 14);
   }
+  age(ctx, seed);
   return c;
 }
 
@@ -290,16 +310,17 @@ export function paintNewsPage(paper, page, index, img) {
 export function paintNewsBack(paper) {
   const [c, ctx] = canvas(NEWS_W, NEWS_H);
   ctx.fillStyle = NEWSPRINT; ctx.fillRect(0, 0, NEWS_W, NEWS_H);
-  ctx.fillStyle = '#1b1916'; ctx.font = `700 18px ${F.news}`;
+  ctx.fillStyle = INK_NEWS; ctx.font = `700 18px ${F.news}`;
   ctx.fillText(paper.title.toUpperCase(), M, M + 14);
   ctx.fillRect(M, M + 26, NEWS_W - 2 * M, 2);
   columns(ctx, allCopy(paper), M, M + 44, NEWS_W - 2 * M, 560, 4, 13);
-  ctx.strokeStyle = '#1b1916'; ctx.lineWidth = 3;
+  ctx.strokeStyle = INK_NEWS; ctx.lineWidth = 3;
   ctx.strokeRect(M, 660, NEWS_W - 2 * M, NEWS_H - M - 660);
-  ctx.fillStyle = '#1b1916'; ctx.font = `700 40px ${F.news}`; ctx.textAlign = 'center';
+  ctx.fillStyle = INK_NEWS; ctx.font = `700 40px ${F.news}`; ctx.textAlign = 'center';
   ctx.fillText('CLASSIFIEDS', NEWS_W / 2, 730);
   ctx.textAlign = 'left';
   columns(ctx, allCopy(paper), M + 20, 760, NEWS_W - 2 * M - 40, NEWS_H - M - 790, 3, 13);
+  age(ctx, hash(paper.id) + 7);
   return c;
 }
 

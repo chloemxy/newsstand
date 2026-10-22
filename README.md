@@ -2,7 +2,7 @@
 
 An interactive 3D newsstand built with three.js. Click a magazine or newspaper to pick it up. Magazines open to a spread and newspapers unfold, and you can turn pages and put them back. The stands are grey-box placeholders until the real Blender model is added.
 
-The visual style follows [frontoffice.co](https://frontoffice.co): white paper, black ink, hairline rules, a single tracked grotesk. The stands are quiet Japanese joinery: hinoki uprights and dowels on smoked oak boards, shot like a product photograph on a seamless studio backdrop (or, with `look: 'room'`, in a room at sunset). The newspaper stand is a ladder where each tabloid is folded over its own rod; picking one up lifts the rod with it. See `fonts.css` for the typeface and how to add the licensed original.
+The visual style follows [frontoffice.co](https://frontoffice.co): white paper, black ink, hairline rules, a single tracked grotesk. The stands are quiet Japanese joinery: hinoki uprights and dowels on smoked oak boards, shot like a product photograph on a seamless studio backdrop (or, with `look: 'room'`, in a room at sunset). The newspaper stand is a two-column ladder where each tabloid is folded over its own steel rod; picking one up lifts the rod with it. The render aims for an old studio photograph: a long lens, warm tungsten light, aged newsprint and a film grade. See `fonts.css` for the typeface and how to add the licensed original.
 
 ## Run it locally
 

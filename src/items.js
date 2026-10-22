@@ -260,7 +260,7 @@ export class Newspaper {
     // the sheets, on a pivot through the page's vertical centre for page turns
     this.frontMat = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide });
     this.backMat = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide, map: tex(paintNewsBack(data)) });
-    const inner = new THREE.MeshStandardMaterial({ color: '#e6dfcf', roughness: 0.95, side: THREE.DoubleSide });
+    const inner = new THREE.MeshStandardMaterial({ color: '#dccdae', roughness: 0.95, side: THREE.DoubleSide });
     this.pivot = new THREE.Group();
     this.pivot.position.y = -W / 2;
     this.sheets = [];

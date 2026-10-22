@@ -156,4 +156,44 @@ export const newspapers = [
       { kicker: 'Back page', headline: 'The work in progress', body: 'Small notes from a desk that is never quite tidy.' },
     ],
   },
+  {
+    id: 'river-bulletin', title: 'River Bulletin', date: 'Saturday 24 October 2026', style: 'photo',
+    pages: [
+      { kicker: 'Front page', headline: 'Old swing bridge turns again after forty years', body: 'Engineers greased the gears by hand; the first barge through was carrying apples.' },
+      { kicker: 'Community', headline: 'Volunteers clear the towpath', body: 'Sixty people, two skips and a lot of bramble.' },
+      { kicker: 'Notices', headline: 'Boat club open day', body: 'Free rowing lessons on Sunday morning, life jackets provided.' },
+    ],
+  },
+  {
+    id: 'saturday-sheet', title: 'The Saturday Sheet', date: 'Weekend edition', style: 'quote',
+    pages: [
+      { kicker: 'Front page', headline: '“Slow down, the shop is open all afternoon”', body: 'The hardware store on Mill Lane goes back to half-day closing, and nobody minds.' },
+      { kicker: 'Weekend', headline: 'Ten walks under five miles', body: 'Each one ends near a bakery.' },
+      { kicker: 'Puzzles', headline: 'The crossword, and last week’s answers', body: 'Seventeen across was, in fact, “umbrella”.' },
+    ],
+  },
+  {
+    id: 'garden-post', title: 'Garden Post', date: 'Autumn 2026', style: 'illustration', accent: '#b8862f',
+    pages: [
+      { kicker: 'Front page', headline: 'Plant your bulbs before the first frost', body: 'Tulips deep, crocuses shallow, and daffodils wherever the squirrels are not.' },
+      { kicker: 'Allotments', headline: 'A waiting list three years long', body: 'The council promises twenty new plots by next spring.' },
+      { kicker: 'Q&A', headline: 'Why are my leeks so thin?', body: 'Usually too little water in August. Next year, mulch.' },
+    ],
+  },
+  {
+    id: 'station-news', title: 'Station News', date: 'Monday 26 October 2026', style: 'photo',
+    pages: [
+      { kicker: 'Front page', headline: 'Clock tower restored to the minute', body: 'After a year of repairs the station clock chimes again, and it is right.' },
+      { kicker: 'Travel', headline: 'Timetable changes from November', body: 'An earlier first train and a later last one on Fridays.' },
+      { kicker: 'People', headline: 'The ticket clerk who knows everyone', body: 'Thirty-one years at the window and a memory for every face.' },
+    ],
+  },
+  {
+    id: 'print-quarterly', title: 'Print Quarterly', date: 'Issue 12', style: 'illustration', accent: '#c4433a',
+    pages: [
+      { kicker: 'Front page', headline: 'Ink, paper and patience', body: 'A visit to a letterpress studio where every page is pulled by hand.' },
+      { kicker: 'Workshop', headline: 'Mixing a perfect red', body: 'Three parts warm, one part cool, and a drop of black.' },
+      { kicker: 'Archive', headline: 'Posters from the corner shop', body: 'Sale signs from the 1960s, rescued from a loft.' },
+    ],
+  },
 ];
