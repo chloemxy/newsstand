@@ -25,9 +25,15 @@ then rotate it so that, in Blender's axes:
 - the Empty's **+Z** runs up the page (toward the top edge of the cover), and
 - the Empty's **−Y** points out of the cover, toward the viewer.
 
-For a magazine leaning back on a shelf, that's a small tilt around X. For a
-newspaper lying on a sloped table, rotate about −70° around X. Leave the
-Empty's scale at 1.
+For a magazine leaning back on a shelf, that's a small tilt around X. Leave
+the Empty's scale at 1.
+
+**Newspapers on the ladder stand** hang over a dowel turned on their side, so
+the masthead runs down the right edge. For those, rotate the Empty 90° around
+Y so its +Z points **right**, and put it at the paper's **left edge, half way
+down** the hanging paper (19 cm below the dowel). Step each lower slot about
+8 mm toward the viewer so it overlaps the paper above, as the placeholder
+does in `src/stands.js`.
 
 Sizes the code uses: magazine 21 × 28 cm, folded newspaper 38 × 29 cm (the
 fold sits at the slot, the masthead half shows). Leave that much room.

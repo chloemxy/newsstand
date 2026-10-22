@@ -18,13 +18,12 @@ async function start() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 1;
   setAnisotropy(renderer.capabilities.getMaxAnisotropy());
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#2a241f');
-  scene.fog = new THREE.Fog('#2a241f', 5, 10);
+  scene.background = new THREE.Color('#ffffff');
 
   const camera = new THREE.PerspectiveCamera(40, 1, 0.02, 50);
   camera.position.fromArray(CONFIG.camera);
@@ -40,8 +39,8 @@ async function start() {
   controls.minDistance = o.minDistance; controls.maxDistance = o.maxDistance;
 
   if (CONFIG.defaultLights) {
-    scene.add(new THREE.HemisphereLight('#fff3e0', '#3a3128', 1.1));
-    const sun = new THREE.DirectionalLight('#ffe2bd', 2.2);
+    scene.add(new THREE.HemisphereLight('#ffffff', '#e4e1da', 2.2));
+    const sun = new THREE.DirectionalLight('#fffaf2', 1.6);
     sun.position.set(1.8, 3.5, 2.6);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -49,7 +48,7 @@ async function start() {
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.02;
     scene.add(sun);
-    const fill = new THREE.PointLight('#9fb6ff', 0.6, 6);
+    const fill = new THREE.PointLight('#ffffff', 0.4, 6);
     fill.position.set(-2, 1.6, 1.5);
     scene.add(fill);
   }
@@ -93,7 +92,9 @@ async function start() {
     // back the camera off until the whole set fits the width
     if (controls.enabled) {
       const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
-      const fit = Math.max(CONFIG.sceneWidth / 2 / (tanH * camera.aspect), CONFIG.sceneHeight / 2 / tanH);
+      // portrait screens frame one stand and let people drag to the other
+      const width = camera.aspect < 1 ? CONFIG.sceneWidth * 0.62 : CONFIG.sceneWidth;
+      const fit = Math.max(width / 2 / (tanH * camera.aspect), CONFIG.sceneHeight / 2 / tanH * (camera.aspect < 1 ? 0 : 1));
       const dir = camera.position.clone().sub(controls.target).normalize();
       controls.maxDistance = Math.max(CONFIG.orbit.maxDistance, fit * 1.1);
       camera.position.copy(controls.target).addScaledVector(dir, fit);

@@ -9,14 +9,13 @@ const INK = '#1d1a16';
 const F = {
   display: '"Fraunces", Georgia, serif',
   news: '"Old Standard TT", "Times New Roman", serif',
-  masthead: '"UnifrakturMaguntia", "Old English Text MT", serif',
-  ui: '"Archivo", "Helvetica Neue", Arial, sans-serif',
+  ui: '"Reform Grotesk", "Archivo", "Helvetica Neue", Arial, sans-serif',
 };
 
 export async function loadFonts() {
   const faces = [
     `900 80px ${F.display}`, `700 40px ${F.display}`, `italic 600 40px ${F.display}`,
-    `400 24px ${F.news}`, `700 24px ${F.news}`, `400 80px ${F.masthead}`, `600 20px ${F.ui}`,
+    `400 24px ${F.news}`, `700 24px ${F.news}`, `400 20px ${F.ui}`, `600 20px ${F.ui}`,
   ];
   try { await Promise.all(faces.map((f) => document.fonts.load(f))); } catch { /* fall back to system fonts */ }
 }
@@ -116,8 +115,9 @@ export function paintNewsPage(paper, page, index, img) {
   ctx.fillStyle = INK; ctx.textAlign = 'center';
   let y;
   if (index === 0) {
-    fitFont(ctx, paper.title, `400 {s}px ${F.masthead}`, 720, 104);
-    ctx.fillText(paper.title, 393, 128);
+    const mast = paper.title.toUpperCase();
+    fitFont(ctx, mast, `700 {s}px ${F.news}`, 720, 92);
+    ctx.fillText(mast, 393, 128);
     ctx.fillRect(32, 152, 722, 3); ctx.fillRect(32, 196, 722, 1);
     ctx.font = `400 18px ${F.news}`; ctx.fillText(paper.date, 393, 182);
     y = 272;
@@ -144,13 +144,6 @@ export function paintNewsPage(paper, page, index, img) {
   return c;
 }
 
-export function paintSign(text, bg = '#1f1c18', ink = '#f4efe4') {
-  const [c, ctx] = canvas(1024, 160);
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, 1024, 160);
-  ctx.fillStyle = ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = `700 88px ${F.display}`; ctx.fillText(text, 512, 84);
-  return c;
-}
 
 export function loadImage(url) {
   return new Promise((resolve, reject) => {

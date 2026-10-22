@@ -24,7 +24,7 @@ export class Reader {
 
     this.dim = new THREE.Mesh(
       new THREE.PlaneGeometry(40, 40),
-      new THREE.MeshBasicMaterial({ color: '#120f0c', transparent: true, opacity: 0, depthWrite: false, fog: false, toneMapped: false }),
+      new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false, fog: false, toneMapped: false }),
     );
     this.dim.visible = false;
     this.dimTarget = 0;
@@ -121,13 +121,17 @@ export class Reader {
   heldPose(item) {
     const f = item.frame(true);
     const vw = innerWidth, vh = innerHeight, wide = vw >= WIDE;
+    const bar = document.querySelector('.bar').offsetHeight;
+    // the free area in px, between the top bar and the panel or sheet
+    const free = wide
+      ? { l: 0, r: vw - PANEL_W, t: bar, b: vh }
+      : { l: 0, r: vw, t: bar, b: vh * (1 - SHEET) };
     const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
-    const availW = wide ? (vw - PANEL_W) / vw : 1;
-    const availH = wide ? 1 : 1 - SHEET;
+    const availW = (free.r - free.l) / vw, availH = (free.b - free.t) / vh;
     const d = Math.max(f.h / (2 * tanH * availH * 0.84), f.w / (2 * tanH * this.camera.aspect * availW * 0.84));
     const viewH = 2 * d * tanH, viewW = viewH * this.camera.aspect;
-    const sx = wide ? -(PANEL_W / 2 / vw) * viewW : 0;
-    const sy = wide ? 0 : (SHEET / 2) * viewH;
+    const sx = ((free.l + free.r) / 2 / vw - 0.5) * viewW;
+    const sy = (0.5 - (free.t + free.b) / 2 / vh) * viewH;
     return { position: new THREE.Vector3(sx - f.cx, sy - f.cy, -d), quaternion: new THREE.Quaternion(), d };
   }
 
@@ -137,6 +141,7 @@ export class Reader {
     this.opener = opener;
     this.setHover(null);
     this.controls.enabled = false;
+    document.body.classList.add('reading');
     item.hover = 0;
     item.root.position.copy(item.mount);
     this.held = item;
@@ -148,7 +153,7 @@ export class Reader {
     const to = this.heldPose(item);
     this.dim.position.z = -to.d - 0.15;
     this.dim.visible = true;
-    this.dimTarget = 0.62;
+    this.dimTarget = 0.85;
 
     await tween(800, (k) => {
       root.position.lerpVectors(p0, to.position, k);
@@ -202,6 +207,7 @@ export class Reader {
 
   showPanel() {
     this.renderPanel();
+    document.body.classList.add('reading');
     this.ui.panel.hidden = false;
     requestAnimationFrame(() => this.ui.panel.classList.add('open'));
     this.ui.close.focus({ preventScroll: true });
@@ -210,6 +216,7 @@ export class Reader {
   hidePanel() {
     const p = this.ui.panel;
     p.classList.remove('open');
+    document.body.classList.remove('reading');
     setTimeout(() => { if (!p.classList.contains('open')) p.hidden = true; }, 250);
   }
 
@@ -250,7 +257,7 @@ export class Reader {
     }
     const m = this.dim.material;
     m.opacity += (this.dimTarget - m.opacity) * (1 - Math.exp(-dt * 8));
-    this.lamp.intensity += (this.dimTarget * 2.6 - this.lamp.intensity) * (1 - Math.exp(-dt * 8));
+    this.lamp.intensity += (this.dimTarget * 1.2 - this.lamp.intensity) * (1 - Math.exp(-dt * 8));
     if (this.dimTarget === 0 && m.opacity < 0.01) { m.opacity = 0; this.dim.visible = false; }
   }
 }

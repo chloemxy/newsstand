@@ -109,4 +109,34 @@ export const newspapers = [
       { kicker: 'Letters', headline: 'Readers on the new cycle lane', body: 'Most are in favour. A few would like it painted a less alarming green.' },
     ],
   },
+  {
+    id: 'harbour-gazette',
+    title: 'Harbour Gazette',
+    date: 'Thursday 22 October 2026',
+    pages: [
+      { kicker: 'Front page', headline: 'Pier reopens after storm repairs', body: 'Anglers were back on the boards by noon. The new railings are a foot higher.' },
+      { kicker: 'Tides', headline: 'This week’s tide table', body: 'Springs on Saturday, with the lowest water just after dawn.' },
+      { kicker: 'Notices', headline: 'Lost: one blue rowing boat', body: 'Last seen drifting past the lighthouse on Tuesday evening. Answers to nothing.' },
+    ],
+  },
+  {
+    id: 'studio-review',
+    title: 'Studio Review',
+    date: 'Autumn 2026',
+    pages: [
+      { kicker: 'Front page', headline: 'Let’s aim to get all things done by spring', body: 'Twelve studios share the deadlines they set themselves, and which ones they kept.' },
+      { kicker: 'Process', headline: 'An attempt to draw every day', body: 'One illustrator, one sketchbook, three hundred and sixty-five small drawings.' },
+      { kicker: 'Type', headline: 'Vectors and more vectors', body: 'Why a lettering studio went back to pencil before going back to the screen.' },
+    ],
+  },
+  {
+    id: 'market-daily',
+    title: 'Market Daily',
+    date: 'Thursday 22 October 2026',
+    pages: [
+      { kicker: 'Front page', headline: 'Apple harvest is the best in a decade', body: 'Growers say a dry summer and a late frost made for small, sweet fruit.' },
+      { kicker: 'Prices', headline: 'What a basket costs this week', body: 'Bread steady, eggs down, coffee up again.' },
+      { kicker: 'Stalls', headline: 'New faces at the Saturday market', body: 'A cheesemaker, a knife sharpener and a man who only sells mushrooms.' },
+    ],
+  },
 ];
