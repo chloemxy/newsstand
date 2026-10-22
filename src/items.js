@@ -176,7 +176,7 @@ function sheetGeometry(layer, W, H) {
   // through the printed outer one
   const bow = 0.0018 + outer * 0.0005;  // sag away from the rod
   const curl = 0.0035 + outer * 0.001;  // the free edge lifts a little
-  const S = 28, A = 18, X = 6;          // segments: each half, the fold, across
+  const S = 28, A = 18, X = 18;         // segments: each half, the fold, across
 
   // path down the sheet: [hangY, hangZ, flatY, flatZ, u, half]; half 0 = front
   const path = [];
@@ -197,7 +197,9 @@ function sheetGeometry(layer, W, H) {
   for (const [hy, hz, fy, fz, u] of path) {
     for (let j = 0; j <= X; j++) {
       const v = j / X, x = (v - 0.5) * H;
-      pos.push(x, hy, hz); flat.push(x, fy, fz); uv.push(u, v);
+      // newsprint ripples a little across its width, more toward the free edge
+      const ripple = 0.0016 * Math.sin(v * Math.PI * 3 + 0.7) * Math.min(1, Math.abs(u)) * Math.sign(hz || 1);
+      pos.push(x, hy, hz + ripple); flat.push(x, fy, fz); uv.push(u, v);
     }
   }
   const index = [], front = [], back = [];
@@ -226,7 +228,7 @@ function sheetGeometry(layer, W, H) {
 const defaultRod = {
   half: 0.25, sleeveX: 0.19,
   metal: new THREE.MeshStandardMaterial({ color: '#c9cccd', metalness: 1, roughness: 0.32 }),
-  sleeve: new THREE.MeshStandardMaterial({ color: '#cdb0c4', roughness: 0.35 }),
+  sleeve: new THREE.MeshStandardMaterial({ color: '#1c1c1c', roughness: 0.5 }),
 };
 
 export class Newspaper {
@@ -238,9 +240,8 @@ export class Newspaper {
     this.spread = 0;
     this.cache = new Map();
     this.mount = new THREE.Vector3(0, 0, 0);          // the slot sits on the rod's axis
-    // on hover the paper lifts off its blocks and comes clear of the stack:
-    // the papers below sit up to ~5 cm further forward, so it must clear them
-    this.hoverLift = new THREE.Vector3(0, 0.015, 0.06);
+    // on hover one end of the rod lifts off its block (see applyHover())
+    this.hoverLift = new THREE.Vector3(0, 0, 0.012);
     this.readQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
 
     this.root = new THREE.Group();
@@ -260,7 +261,7 @@ export class Newspaper {
     // the sheets, on a pivot through the page's vertical centre for page turns
     this.frontMat = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide });
     this.backMat = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide, map: tex(paintNewsBack(data)) });
-    const inner = new THREE.MeshStandardMaterial({ color: '#dccdae', roughness: 0.95, side: THREE.DoubleSide });
+    const inner = new THREE.MeshStandardMaterial({ color: '#e2dbcc', roughness: 0.95, side: THREE.DoubleSide });
     this.pivot = new THREE.Group();
     this.pivot.position.y = -W / 2;
     this.sheets = [];
@@ -303,6 +304,14 @@ export class Newspaper {
   showSpread(i) {
     this.spread = i;
     setMap(this.frontMat, this.page(i));
+  }
+
+  // Hover: the right end of the rod lifts off its block while the left end
+  // stays put as a pivot, so the paper tips up from one side. h runs 0..1.
+  applyHover(h) {
+    const a = 0.13 * h, r = this.rodHalf;
+    this.root.position.set(this.mount.x - r + r * Math.cos(a), this.mount.y + r * Math.sin(a), this.mount.z + this.hoverLift.z * h);
+    this.root.rotation.set(0, 0, a);
   }
 
   flatten(k) { for (const m of this.sheets) m.morphTargetInfluences[0] = k; }

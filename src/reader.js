@@ -159,7 +159,8 @@ export class Reader {
     this.controls.enabled = false;
     document.body.classList.add('reading');
     item.hover = 0;
-    item.root.position.copy(item.mount);
+    if (item.applyHover) item.applyHover(0);
+    else item.root.position.copy(item.mount);
     this.held = item;
 
     const root = item.root;
@@ -270,7 +271,8 @@ export class Reader {
       const goal = it === this.hovered ? 1 : 0;
       if (Math.abs(it.hover - goal) < 0.001) continue;
       it.hover += (goal - it.hover) * k;
-      it.root.position.copy(it.mount).addScaledVector(it.hoverLift, it.hover);
+      if (it.applyHover) it.applyHover(it.hover); // newspapers tip up from one side
+      else it.root.position.copy(it.mount).addScaledVector(it.hoverLift, it.hover);
     }
     const m = this.dim.material;
     m.opacity += (this.dimTarget - m.opacity) * (1 - Math.exp(-dt * 8));

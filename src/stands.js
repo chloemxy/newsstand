@@ -1,11 +1,12 @@
-// Placeholder stands in wood, after the reference photo: pale pine posts,
-// blocks and dowels, an MDF back board on split MDF base slabs, pink
-// plastic sleeves on the rods and dark screws with washers. They expose the same slots a GLB
+// Placeholder stands in wood, after the reference photo: pale pine posts and
+// blocks, an MDF back board on split MDF base slabs, steel rods with pink
+// plastic sleeves, and dark screws with washers. They expose the same slots a GLB
 // would (see models/README.md), so swapping in the real model is a config
 // change.
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { makeMaterials } from './materials.js';
 
 const deg = THREE.MathUtils.degToRad;
@@ -13,45 +14,58 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const TILE = { u: 0.45, v: 0.45 }; // metres covered by one tile of a scanned texture
 
 // Collects geometry per material and merges it, so every board, block and
-// dowel of a stand draws as a handful of meshes. UVs are scaled to real
-// size so the grain is the same density on a thin dowel and a wide board.
+// dowel of a stand draws as a handful of meshes. Each piece gets UVs at real
+// size (so grain density matches on a thin dowel and a wide board), its own
+// grain offset, and a slight tone of its own, as real pieces of timber do.
 class Kit {
   constructor() { this.parts = new Map(); this.seed = 1; }
 
-  add(geo, mat) {
+  rand() { this.seed = (this.seed * 9301 + 49297) % 233280; return this.seed / 233280; }
+
+  // tone: a per-piece colour multiplier written as vertex colour
+  add(geo, mat, tone = 1) {
+    const n = geo.attributes.position.count, c = new Float32Array(n * 3);
+    const warm = 1 + (tone - 1) * 0.6; // darker pieces are a touch warmer
+    for (let i = 0; i < n; i++) c.set([tone * warm, tone, tone / warm], i * 3);
+    geo.setAttribute('color', new THREE.BufferAttribute(c, 3));
     if (!this.parts.has(mat)) this.parts.set(mat, []);
     this.parts.get(mat).push(geo);
   }
 
-  offset() { this.seed = (this.seed * 9301 + 49297) % 233280; return this.seed / 233280; }
+  pieceTone() { return 0.9 + this.rand() * 0.16; }
 
-  // a squared timber from a to b; `across` sets which way its width runs
+  // a squared timber from a to b with eased edges; `across` sets which way
+  // its width runs. UVs are box-projected in the piece's own space, so the
+  // grain runs down its length on the long faces.
   beam(a, b, width, depth, mat, across = V(1, 0, 0)) {
     const L = b.clone().sub(a);
     const len = L.length();
     L.normalize();
     const W = across.clone().sub(L.clone().multiplyScalar(across.dot(L))).normalize();
     const D = W.clone().cross(L);
-    const g = new THREE.BoxGeometry(width, len, depth);
-    // faces: +x, -x, +y, -y, +z, -z, four vertices each
-    const dims = [[depth, len], [depth, len], [width, depth], [width, depth], [width, len], [width, len]];
-    const uv = g.attributes.uv, du = this.offset(), dv = this.offset();
-    for (let f = 0; f < 6; f++) for (let i = f * 4; i < f * 4 + 4; i++) {
-      uv.setXY(i, uv.getX(i) * dims[f][0] / TILE.u + du, uv.getY(i) * dims[f][1] / TILE.v + dv);
+    const ease = Math.min(0.0022, Math.min(width, depth, len) * 0.2);
+    const g = new RoundedBoxGeometry(width, len, depth, 2, ease);
+    const pos = g.attributes.position, nor = g.attributes.normal, uv = g.attributes.uv;
+    const du = this.rand(), dv = this.rand();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const ax = Math.abs(nor.getX(i)), ay = Math.abs(nor.getY(i)), az = Math.abs(nor.getZ(i));
+      const [u, v] = ax >= ay && ax >= az ? [z, y] : ay >= az ? [x, z] : [x, y];
+      uv.setXY(i, u / TILE.u + du, v / TILE.v + dv);
     }
     g.applyMatrix4(new THREE.Matrix4().makeBasis(W, L, D).setPosition(a.clone().add(b).multiplyScalar(0.5)));
-    this.add(g, mat);
+    this.add(g, mat, this.pieceTone());
   }
 
   // a round dowel from a to b
   dowel(a, b, r, mat, segments = 20) {
     const L = b.clone().sub(a), len = L.length();
     const g = new THREE.CylinderGeometry(r, r, len, segments, 1);
-    const uv = g.attributes.uv, du = this.offset();
+    const uv = g.attributes.uv, du = this.rand();
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (2 * Math.PI * r) / TILE.u + du, uv.getY(i) * len / TILE.v);
     g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), L.normalize()));
     g.translate(...a.clone().add(b).multiplyScalar(0.5).toArray());
-    this.add(g, mat);
+    this.add(g, mat, this.pieceTone());
   }
 
   // a bolt head on a face, pointing along `normal`
@@ -69,7 +83,7 @@ class Kit {
     const g = new THREE.Group();
     g.name = name;
     for (const [mat, geos] of this.parts) {
-      const m = new THREE.Mesh(mergeGeometries(geos.map((x) => x.toNonIndexed())), mat);
+      const m = new THREE.Mesh(mergeGeometries(geos.map((x) => (x.index ? x.toNonIndexed() : x))), mat);
       m.castShadow = true; m.receiveShadow = true;
       g.add(m);
     }

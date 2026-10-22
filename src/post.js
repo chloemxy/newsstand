@@ -1,6 +1,7 @@
-// Post-processing: tone mapping, then a vintage film grade with grain and
-// vignette, for a printed, still-photo feel. (Screen-space ambient occlusion was tried and
-// dropped: it haloed and banded on the thin dowels at oblique angles.)
+// Post-processing: tone mapping, then a light photographic grade with grain
+// and vignette. Screen-space AO (GTAO) was tried twice and dropped: it banded
+// on thin dowels with an orbiting camera, and with this textured backdrop it
+// shaded empty background black. Contact shading comes from soft shadows.
 
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -13,7 +14,7 @@ const still = matchMedia('(prefers-reduced-motion: reduce)');
 // A film look applied after tone mapping: faded blacks and warm, slightly
 // creamy highlights, colour pulled back a little, then grain and vignette.
 const Film = {
-  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, amount: { value: 0.035 }, vignette: { value: 0.55 } },
+  uniforms: { tDiffuse: { value: null }, time: { value: 0 }, amount: { value: 0.025 }, vignette: { value: 0.4 } },
   vertexShader: /* glsl */`
     varying vec2 vUv;
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
@@ -23,11 +24,11 @@ const Film = {
     float rand(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
     void main() {
       vec3 c = texture2D(tDiffuse, vUv).rgb;
-      c = mix(vec3(0.07, 0.06, 0.05), vec3(0.99, 0.97, 0.92), c);   // fade the ends
+      c = mix(vec3(0.045, 0.04, 0.035), vec3(0.995, 0.99, 0.975), c); // a slight fade at the ends
       c = c * c * (3.0 - 2.0 * c) * 0.35 + c * 0.65;                     // gentle S-curve
       float l = dot(c, vec3(0.299, 0.587, 0.114));
-      c = mix(vec3(l), c, 0.84);                                          // muted colour
-      c *= vec3(1.015, 1.0, 0.965);                                        // warm
+      c = mix(vec3(l), c, 0.92);                                          // colour pulled back a touch
+      c *= vec3(1.008, 1.0, 0.99);                                         // barely warm
       c += (rand(vUv * 1024.0 + time) - 0.5) * amount;
       vec2 d = vUv - 0.5;
       c *= 1.0 - dot(d, d) * vignette;

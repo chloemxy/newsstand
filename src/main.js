@@ -10,6 +10,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { setMaterialAnisotropy, loadScans } from './materials.js';
 import { makePost } from './post.js';
 import { ContactShadow } from './contact-shadow.js';
+import { zenBackdrop } from './backdrop.js';
 
 const canvas = document.getElementById('scene');
 const loading = document.getElementById('loading');
@@ -22,20 +23,21 @@ async function start() {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap; // VSM bled light and shimmered at grazing angles
+  renderer.shadowMap.type = THREE.PCFShadowMap; // PCF honours shadow.radius for soft edges; VSM bled light at grazing angles
   renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.12;
   setAnisotropy(renderer.capabilities.getMaxAnisotropy());
   setMaterialAnisotropy(renderer.capabilities.getMaxAnisotropy());
   await loadScans();
 
   const scene = new THREE.Scene();
-  // studio: a seamless paper sweep, lighter at the top, with no horizon line
-  scene.background = studio ? studioBackdrop() : new THREE.Color('#ead5bd');
+  // studio: a calm limewash wall with a bamboo shadow drifting across it
+  const backdrop = studio ? zenBackdrop() : null;
+  scene.background = backdrop ? backdrop.texture : new THREE.Color('#ead5bd');
   // a soft room for the oiled wood to catch highlights from
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = studio ? 0.5 : 0.22;
+  scene.environmentIntensity = studio ? 0.22 : 0.22;
 
   const shot = CONFIG.shot;
   const camera = new THREE.PerspectiveCamera(shot.fov, 1, 0.02, 80);
@@ -84,7 +86,7 @@ async function start() {
   const bounds = new THREE.Box3().setFromObject(focus);
   const reader = new Reader({ camera, controls, canvas, items, bounds });
   const post = makePost(renderer, scene, camera);
-  window.kiosk = { scene, camera, controls, reader, items }; // handy in the devtools console
+  window.kiosk = { scene, camera, controls, reader, items, post }; // handy in the devtools console
 
   const centre = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
@@ -129,6 +131,7 @@ async function start() {
     const dt = Math.min(clock.getDelta(), 0.05);
     reader.update(dt);
     contact?.update();
+    backdrop?.update(clock.elapsedTime);
     post.render();
   });
 
@@ -136,47 +139,35 @@ async function start() {
   setTimeout(() => loading.remove(), 400);
 }
 
-// Studio softbox light, like the reference product photo: a large soft key
-// from the front left, a gentle fill from the right, a rim from behind to
+// Calm daylight, like the reference product photo: a large soft key from
+// the front right, a gentle fill on the camera side, a rim from behind to
 // lift the stand off the backdrop.
 function addStudioLights(scene) {
   // warm tungsten studio: a big soft key, warm bounce from below, a cooler
   // window fill, and a rim to separate the stand from the backdrop
-  scene.add(new THREE.HemisphereLight('#fff7ec', '#ddd0bb', 0.8));
+  scene.add(new THREE.HemisphereLight('#f7f6f2', '#d6d2c9', 0.28));
 
-  const key = new THREE.DirectionalLight('#ffe9d0', 2.3);
-  key.position.set(-1.8, 2.8, 3.4);
+  // a large soft key from high front-right, across from the camera (which
+  // looks from the left), so shadows fall visibly below and beside each rod
+  // and paper instead of hiding behind them
+  const key = new THREE.DirectionalLight('#fff6ec', 3.4);
+  key.position.set(2.2, 3.4, 2.2);
   key.castShadow = true; // self-shadowing: rungs and papers onto the board
   key.shadow.mapSize.setScalar(innerWidth < 700 ? 2048 : 4096);
   Object.assign(key.shadow.camera, { left: -1.2, right: 1.2, top: 2.1, bottom: -0.2, near: 0.5, far: 10 });
-  key.shadow.radius = 4;
+  key.shadow.radius = 5;
+  key.shadow.blurSamples = 20;
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.02;
   scene.add(key);
 
-  const fill = new THREE.DirectionalLight('#e4ebf7', 0.5);
-  fill.position.set(2.4, 1.3, 2.6);
+  const fill = new THREE.DirectionalLight('#e6ecf6', 0.45);
+  fill.position.set(-2.6, 1.4, 2.4); // camera side, keeps the shadows from going black
   scene.add(fill);
 
   const rim = new THREE.DirectionalLight('#fff0dc', 0.6);
   rim.position.set(0.6, 2.6, -2.4);
   scene.add(rim);
-}
-
-// A vertical gradient, light at the top and slightly deeper at the bottom,
-// like a lit cream paper sweep in an old photo studio.
-function studioBackdrop() {
-  const c = document.createElement('canvas');
-  c.width = 4; c.height = 512;
-  const ctx = c.getContext('2d');
-  const g = ctx.createLinearGradient(0, 0, 0, 512);
-  g.addColorStop(0, '#f4efe6');
-  g.addColorStop(0.55, '#ece4d6');
-  g.addColorStop(1, '#ddd2c0');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, 4, 512);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
 }
 
 // Sunset through a shoji screen: a low orange sun from the right throwing

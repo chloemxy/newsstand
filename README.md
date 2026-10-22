@@ -2,7 +2,7 @@
 
 An interactive 3D newsstand built with three.js. Click a magazine or newspaper to pick it up. Magazines open to a spread and newspapers unfold, and you can turn pages and put them back. The stands are grey-box placeholders until the real Blender model is added.
 
-The visual style follows [frontoffice.co](https://frontoffice.co): white paper, black ink, hairline rules, a single tracked grotesk. The stands are quiet Japanese joinery: hinoki uprights and dowels on smoked oak boards, shot like a product photograph on a seamless studio backdrop (or, with `look: 'room'`, in a room at sunset). The newspaper stand is a two-column ladder where each tabloid is folded over its own steel rod; picking one up lifts the rod with it. The render aims for an old studio photograph: a long lens, warm tungsten light, aged newsprint and a film grade. See `fonts.css` for the typeface and how to add the licensed original.
+The visual style follows [frontoffice.co](https://frontoffice.co): white paper, black ink, hairline rules, a single tracked grotesk. The stands are quiet Japanese joinery: hinoki uprights and dowels on smoked oak boards, shot like a product photograph on a seamless studio backdrop (or, with `look: 'room'`, in a room at sunset). The newspaper stand is a two-column ladder where each tabloid is folded over its own steel rod; picking one up lifts the rod with it. The render aims for a calm product photograph: a long lens, soft daylight from across the camera, a limewash wall with a slowly drifting bamboo shadow, and a light film grade. See `fonts.css` for the typeface and how to add the licensed original.
 
 ## Run it locally
 
@@ -25,6 +25,7 @@ Then open http://localhost:4517.
 | `src/stands.js` | Placeholder stands in hinoki and smoked oak, and slot lookup |
 | `src/materials.js` | Procedural finishes: wood grain, steel, frosted sleeves, plaster, stone |
 | `src/post.js` | Tone mapping, film grain and vignette |
+| `src/backdrop.js` | The zen backdrop: limewash wall and a slowly swaying bamboo shadow |
 | `src/contact-shadow.js` | Soft contact shadow under the stand on the studio backdrop |
 | `src/model.js` | Loads a `.glb` stand model and finds its slots |
 | `src/textures.js` | Paints covers and pages onto canvases |

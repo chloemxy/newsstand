@@ -3,7 +3,7 @@
 // content.js to use your own artwork instead.
 
 export const PAPER = '#f4efe4';
-export const NEWSPRINT = '#e8dcc1'; // yellowed
+export const NEWSPRINT = '#ece7dc'; // lightly aged
 const INK = '#1d1a16';
 
 const F = {
@@ -287,7 +287,7 @@ function age(ctx, seed) {
   ctx.globalCompositeOperation = 'multiply';
   const g = ctx.createRadialGradient(NEWS_W / 2, NEWS_H / 2, NEWS_W * 0.3, NEWS_W / 2, NEWS_H / 2, NEWS_H * 0.72);
   g.addColorStop(0, 'rgba(175,135,70,0)');
-  g.addColorStop(1, 'rgba(160,115,50,0.28)');
+  g.addColorStop(1, 'rgba(160,125,75,0.14)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, NEWS_W, NEWS_H);
   for (let i = 0; i < 34; i++) {
     const x = r() * NEWS_W, y = r() * NEWS_H, rad = 2 + r() * r() * 16;

@@ -114,7 +114,8 @@ function scanned(prefix, { tint = '#ffffff', turn = false, normal = 0.6, rough =
     return t;
   });
   return new THREE.MeshStandardMaterial({
-    color: tint, map: maps[0], roughness: rough, roughnessMap: maps[1],
+    color: tint, vertexColors: true, // each piece carries its own tone (stands.js)
+    map: maps[0], roughness: rough, roughnessMap: maps[1],
     normalMap: maps[2], normalScale: new THREE.Vector2(normal, normal),
   });
 }
@@ -125,9 +126,9 @@ export function makeMaterials() {
   return {
     // pine posts, blocks and rods: scanned ash veneer, warmed to pine
     // (key kept as `hinoki`)
-    hinoki: scanned('ash', { tint: '#ffe6c2', turn: true, normal: 0.5 }),
+    hinoki: scanned('ash', { tint: '#fff1de', turn: true, normal: 0.5 }),
     // MDF board and base: a scanned smooth kraft board, darkened to MDF brown
-    oak: scanned('mdf', { tint: '#b98f68', normal: 0.35 }),
+    oak: scanned('mdf', { tint: '#9d9289', normal: 0.35 }), // desaturated toward real MDF
     // brushed steel for the newspaper rods: fine lengthwise streaks
     steel: new THREE.MeshStandardMaterial({
       color: '#bdb6a9', metalness: 1, roughness: 1, // gently tarnished
@@ -135,9 +136,9 @@ export function makeMaterials() {
     }),
     // dark zinc screws and washers
     iron: new THREE.MeshStandardMaterial({ color: '#4b4c4c', metalness: 0.85, roughness: 0.4 }),
-    // pink-lavender plastic sleeves on the rod ends, as in the photo. Opaque:
-    // see-through parts inside one merged mesh can't be depth-sorted and flicker.
-    sleeve: new THREE.MeshPhysicalMaterial({ color: '#c6a5b3', roughness: 0.3, clearcoat: 0.6, clearcoatRoughness: 0.25 }),
+    // black plastic sleeves on the rod ends. Opaque: see-through parts inside
+    // one merged mesh can't be depth-sorted and flicker.
+    sleeve: new THREE.MeshPhysicalMaterial({ color: '#1b1b1a', roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.3 }),
     floor: new THREE.MeshStandardMaterial({
       map: texture(wornColour('#e4ddd1', 17, { mottle: 0.1, size: 1024 }), { srgb: true, repeat: [3, 3] }),
       roughness: 1,
