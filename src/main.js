@@ -10,7 +10,9 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { setMaterialAnisotropy, loadScans } from './materials.js';
 import { makePost } from './post.js';
 import { ContactShadow } from './contact-shadow.js';
-import { zenBackdrop } from './backdrop.js';
+import { zenBackdrop, leafCanopy } from './backdrop.js';
+import { makeHandCursor } from './cursor.js';
+import { FallingLeaves } from './leaves.js';
 
 const canvas = document.getElementById('scene');
 const loading = document.getElementById('loading');
@@ -19,6 +21,7 @@ const studio = CONFIG.look === 'studio';
 
 async function start() {
   await Promise.all([loadFonts(), loadPrint()]);
+  const cursorRender = makeHandCursor(); // the engraved hand cursor (a promise)
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -47,7 +50,7 @@ async function start() {
   // needs to know whether the camera is free (it never moves anyway).
   const controls = { enabled: true };
 
-  if (CONFIG.defaultLights) (studio ? addStudioLights : addSunsetLights)(scene);
+  const lights = CONFIG.defaultLights ? (studio ? addStudioLights : addSunsetLights)(scene) : null;
 
   // the direction the camera looks from; the distance is worked out to fit
   const viewDir = new THREE.Vector3(
@@ -77,7 +80,7 @@ async function start() {
     item.slot = slot;
     item.root.position.copy(item.mount);
     slot.add(item.root);
-    if (item.rod) slot.add(item.rod); // a newspaper's rod stays on the stand
+    if (item.rod) slot.add(item.rod); // the rod rests on the stand between pick-ups
     items.push(item);
   });
   if (CONFIG.modelUrl || CONFIG.showMagazines) place(magazines, slots.magazines, Magazine);
@@ -86,8 +89,9 @@ async function start() {
   focus.updateWorldMatrix(true, true);
   const bounds = new THREE.Box3().setFromObject(focus);
   const reader = new Reader({ camera, controls, canvas, items, bounds });
+  const leaves = new FallingLeaves(scene, bounds); // now and then, a leaf drifts down
   const post = makePost(renderer, scene, camera);
-  window.kiosk = { scene, camera, controls, reader, items, post }; // handy in the devtools console
+  window.kiosk = { cursorRender, leaves, scene, camera, controls, reader, items, post }; // handy in the devtools console
 
   const centre = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3());
@@ -133,6 +137,8 @@ async function start() {
     reader.update(dt);
     contact?.update();
     backdrop?.update(clock.elapsedTime);
+    lights?.update?.(clock.elapsedTime);
+    leaves.update(dt);
     post.render();
   });
 
@@ -146,21 +152,33 @@ async function start() {
 function addStudioLights(scene) {
   // warm tungsten studio: a big soft key, warm bounce from below, a cooler
   // window fill, and a rim to separate the stand from the backdrop
-  scene.add(new THREE.HemisphereLight('#f7f6f2', '#d6d2c9', 0.28));
+  scene.add(new THREE.HemisphereLight('#f4f1ec', '#d6d2c9', 0.2));
 
-  // a large soft key from high front-right, across from the camera (which
-  // looks from the left), so shadows fall visibly below and beside each rod
-  // and paper instead of hiding behind them
-  const key = new THREE.DirectionalLight('#fff6ec', 3.4);
-  key.position.set(2.2, 3.4, 2.2);
-  key.castShadow = true; // self-shadowing: rungs and papers onto the board
+  // the key is warm sunlight through leaves, from high front-right, across
+  // from the camera (which looks from the left), so shadows fall visibly
+  // below and beside each rod and paper. An unseen leaf canopy in front of
+  // it dapples everything it lights.
+  const key = new THREE.DirectionalLight('#ffdcb0', 3.8);
+  const sunDir = new THREE.Vector3(2.2, 3.4, 2.2).normalize();
+  key.position.copy(sunDir).multiplyScalar(4.6);
+  key.castShadow = true;
   key.shadow.mapSize.setScalar(innerWidth < 700 ? 2048 : 4096);
   Object.assign(key.shadow.camera, { left: -1.2, right: 1.2, top: 2.1, bottom: -0.2, near: 0.5, far: 10 });
   key.shadow.radius = 5;
   key.shadow.blurSamples = 20;
+  // no normal bias: the paper sheets are double-sided and their normals
+  // face into the fold, so a normal offset would push the shadow test
+  // behind the paper and leave every page in its own shadow
   key.shadow.bias = -0.0004;
-  key.shadow.normalBias = 0.02;
+  key.shadow.normalBias = 0;
   scene.add(key);
+
+  // the canopy hangs between the sun and the stand, facing the sun
+  const leaves = leafCanopy();
+  leaves.mesh.position.set(0, 1.1, 0).addScaledVector(sunDir, 1.6);
+  leaves.mesh.lookAt(leaves.mesh.position.clone().add(sunDir));
+  leaves.settle();
+  scene.add(leaves.mesh);
 
   const fill = new THREE.DirectionalLight('#e6ecf6', 0.45);
   fill.position.set(-2.6, 1.4, 2.4); // camera side, keeps the shadows from going black
@@ -169,6 +187,7 @@ function addStudioLights(scene) {
   const rim = new THREE.DirectionalLight('#fff0dc', 0.6);
   rim.position.set(0.6, 2.6, -2.4);
   scene.add(rim);
+  return leaves; // update(seconds) sways the leaves
 }
 
 // Sunset through a shoji screen: a low orange sun from the right throwing

@@ -68,6 +68,57 @@ function paintBamboo() {
   return c;
 }
 
+// Sunlight through leaves: a canopy of leaf cut-outs that draws nothing on
+// screen (no colour, no depth) but still goes into the sun's shadow map, so
+// it dapples the stand and the papers with real shadows. It sways slowly,
+// like the shadow on the wall, and holds still for reduced motion.
+
+export function leafCanopy(size = 2.4) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = SIZE;
+  const lc = canvas.getContext('2d');
+  const r = seeded(23);
+  lc.fillStyle = '#000'; lc.strokeStyle = '#000';
+  // sprigs reaching in from all sides, leaving gaps of open sunlight
+  for (let s = 0; s < 46; s++) {
+    const x = r() * SIZE, y = r() * SIZE, a = r() * Math.PI * 2, len = 180 + r() * 200;
+    const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
+    lc.lineWidth = 3; lc.lineCap = 'round';
+    lc.beginPath(); lc.moveTo(x, y); lc.lineTo(ex, ey); lc.stroke();
+    for (let i = 0; i < 10; i++) {
+      const t = 0.15 + (i / 10) * 0.85, px = x + (ex - x) * t, py = y + (ey - y) * t;
+      for (let k = 0, n = 2 + Math.floor(r() * 3); k < n; k++) {
+        const la = a + (r() < 0.5 ? -1 : 1) * (0.5 + r() * 0.9);
+        const L = 34 + r() * 40, W = 7 + r() * 5;
+        lc.save(); lc.translate(px, py); lc.rotate(la);
+        lc.beginPath(); lc.ellipse(L / 2, 0, L / 2, W / 2, 0, 0, Math.PI * 2); lc.fill();
+        lc.restore();
+      }
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(size, size),
+    new THREE.MeshBasicMaterial({ map: texture, alphaTest: 0.5, side: THREE.DoubleSide, colorWrite: false, depthWrite: false }),
+  );
+  mesh.name = 'leaf_canopy';
+  mesh.castShadow = true;
+  const rest = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion() };
+  return {
+    mesh,
+    // call once the canopy is placed, to remember its resting pose
+    settle() { rest.position.copy(mesh.position); rest.quaternion.copy(mesh.quaternion); },
+    update(t) {
+      if (still.matches) return;
+      mesh.position.copy(rest.position);
+      mesh.translateX(Math.sin(t * 0.45) * 0.012);
+      mesh.translateY(Math.cos(t * 0.37) * 0.008);
+      mesh.quaternion.copy(rest.quaternion);
+      mesh.rotateZ(Math.sin(t * 0.3) * 0.015 + Math.sin(t * 0.85) * 0.005);
+    },
+  };
+}
+
 export function zenBackdrop() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = SIZE;

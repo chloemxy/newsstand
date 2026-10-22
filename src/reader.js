@@ -1,11 +1,17 @@
 // Hover, pick up, read, put back. Picking up is one continuous motion: a
-// newspaper lifts off its rod, its fold relaxes as it travels to the camera,
-// it straightens, then it flips open into a spread while it re-centres.
+// newspaper and its rod lift off the blocks together, the rod slides out of
+// the fold and goes back on the stand, and the paper straightens as it
+// travels to the camera, flipping open into a spread before it arrives.
 // Nothing fades: the stand stays in view behind the paper. A small control
 // bar turns pages, and the page text is mirrored for screen readers.
 
 import * as THREE from 'three';
 import { tween, ease } from './anim.js';
+import { sound } from './sound.js';
+
+// k of a stage running from a to b ms, eased; 0 before it starts, 1 after
+const seg = (t, a, b, e = ease.inOut) => e(THREE.MathUtils.clamp((t - a) / (b - a), 0, 1));
+const linear = (k) => k;
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,7 +32,7 @@ export class Reader {
     }
 
     this.ui = {
-      tip: $('tip'), bar: $('reader'), text: $('reader-text'), count: $('reader-count'),
+      bar: $('reader'), text: $('reader-text'), count: $('reader-count'),
       prev: $('reader-prev'), next: $('reader-next'), close: $('reader-close'), index: $('index-list'),
     };
     this.buildIndex();
@@ -38,18 +44,41 @@ export class Reader {
       const li = document.createElement('li');
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = `${it.title}`;
+      const meta = document.createElement('small');
+      meta.textContent = it.meta || '';
+      b.append(it.title, meta);
       b.setAttribute('aria-label', `Pick up ${it.kind} ${it.title}`);
-      b.addEventListener('click', () => this.pick(it, b));
+      b.addEventListener('click', () => { this.closeIndex(); this.pick(it, b); });
       li.append(b);
       this.ui.index.append(li);
     }
+    const count = document.getElementById('index-count');
+    if (count) count.textContent = String(this.items.length);
+
+    // the list closes on a click anywhere outside it, or Escape; that
+    // click only closes the list, it doesn't also pick up a paper
+    this.details = this.ui.index.closest('details');
+    const summary = this.details?.querySelector('summary');
+    this.details?.addEventListener('toggle', () => {
+      if (summary) summary.textContent = this.details.open ? 'Close' : 'Browse the stand';
+      if (this.details.open) this.setHover(null);
+    });
+    document.addEventListener('pointerdown', (e) => {
+      if (!this.details?.open || this.details.contains(e.target)) return;
+      this.closeIndex();
+      e.stopPropagation();
+    }, true);
+    addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.details?.open) { this.closeIndex(); summary?.focus(); }
+    });
   }
+
+  closeIndex() { if (this.details) this.details.open = false; }
 
   bind() {
     const c = this.canvas;
     let down = null;
-    c.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; this.setHover(null); });
+    c.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; this.setHover(null, true); });
     c.addEventListener('pointerup', (e) => {
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) return;
       down = null;
@@ -76,20 +105,19 @@ export class Reader {
   }
 
   move(e) {
-    if (this.state !== 'idle' || e.pointerType === 'touch' || e.buttons) return;
+    if (this.state !== 'idle' || e.pointerType === 'touch' || e.buttons || this.details?.open) return;
     const h = this.hit(e, this.meshes);
     this.setHover(h ? h.object.userData.item : null);
-    if (this.hovered) {
-      const tip = this.ui.tip;
-      tip.textContent = `${this.hovered.title} · Pick up`;
-      tip.style.transform = `translate(${e.clientX + 16}px, ${e.clientY + 16}px)`;
-    }
   }
 
-  setHover(item) {
+  setHover(item, quiet = false) {
+    // brush the paper as the pointer arrives on a new one, panned to where it is
+    // the rod clicks up off its block, and knocks back down when left (not
+    // when the paper is being picked up, which has its own sound)
+    if (item && item !== this.hovered) sound.hover(this.ndc.x * 0.6);
+    if (!quiet && this.hovered && item !== this.hovered && this.state === 'idle') sound.unhover(this.ndc.x * 0.6);
     this.hovered = item;
-    this.ui.tip.hidden = !item;
-    this.canvas.style.cursor = item ? 'pointer' : '';
+    this.canvas.classList.toggle('over', !!item); // the scene's cursor (style.css)
   }
 
   click(e) {
@@ -156,42 +184,58 @@ export class Reader {
     else item.root.position.copy(item.mount);
     this.held = item;
 
-    const root = item.root;
+    const root = item.root, rod = item.rod;
+    item.castShadows?.(false); // in hand: lit, but no self-shadowing flicker
     this.camera.updateMatrixWorld();
     this.camera.attach(root);
+    if (rod) this.camera.attach(rod);
     const p0 = root.position.clone(), q0 = root.quaternion.clone(), s0 = root.scale.clone();
-
-    // 1. lift off the rod: up and toward you, the fold starting to relax
-    let pFrom = p0;
-    if (item.liftOffset) {
-      const pLift = this.slotPoint(item, item.liftOffset);
-      await tween(380, (k) => {
-        root.position.lerpVectors(p0, pLift, k);
-        item.flatten?.(0.2 * k);
-      }, ease.out);
-      pFrom = pLift;
-    }
-
-    // 2. travel to you, straightening on the way
-    const closed = this.heldPose(item, 0);
-    await tween(820, (k) => {
-      root.position.lerpVectors(pFrom, closed.position, k);
-      root.position.y += Math.sin(Math.PI * k) * 0.03;
-      root.quaternion.slerpQuaternions(q0, closed.quaternion, k);
-      root.scale.lerpVectors(s0, new THREE.Vector3().setScalar(closed.scale), k);
-      item.flatten?.(0.2 + 0.8 * k);
-    });
-
-    // 3. open, re-centring as the spread widens
+    const pLift = this.slotPoint(item, item.liftOffset ?? new THREE.Vector3());
+    const rHome = this.slotPoint(item, new THREE.Vector3());
+    const axis = rod ? new THREE.Vector3(1, 0, 0).applyQuaternion(rod.quaternion) : null;
+    const out = (Math.sign(item.slot.position.x) || 1) * (2 * (item.rodHalf ?? 0.2) + 0.06);
+    const rOut = pLift.clone().addScaledVector(axis ?? new THREE.Vector3(), out);
     const open = this.heldPose(item, item.openSpread ?? 0);
-    const pc = root.position.clone();
-    await Promise.all([
-      item.open(),
-      tween(700, (k) => {
-        root.position.lerpVectors(pc, open.position, k);
-        root.scale.setScalar(THREE.MathUtils.lerp(closed.scale, open.scale, k));
-      }, ease.out),
-    ]);
+    const sOpen = new THREE.Vector3().setScalar(open.scale);
+    sound.lift();
+
+    // One timeline, its stages overlapping so nothing pauses (ms):
+    //   0–300     paper and rod lift off the blocks together
+    //   200–1100  the paper flies to you, straightening in the first 30%,
+    //             its cover swinging open from there while still in flight;
+    //             its shadows fade out as it leaves the stand's light
+    //   150–650   meanwhile the rod slides out of the fold, outward from
+    //             the stand, as the paper pulls away from it
+    //   650–1250  the rod goes back onto its blocks
+    const STRAIGHT = 0.3;
+    const flight = open.position.clone().sub(pLift);
+    let opening = null;
+    await tween(1250, (k) => {
+      const t = k * 1250;
+      const L = seg(t, 0, 300, ease.out), S = seg(t, 150, 650), F = seg(t, 200, 1100), R = seg(t, 650, 1250);
+      root.position.lerpVectors(p0, pLift, L).addScaledVector(flight, F);
+      root.position.y += Math.sin(Math.PI * F) * 0.03;
+      root.quaternion.slerpQuaternions(q0, open.quaternion, F);
+      root.scale.lerpVectors(s0, sOpen, F);
+      item.setShadowMix?.(1 - seg(t, 200, 500));
+      if (rod) {
+        if (R > 0) rod.position.lerpVectors(rOut, rHome, R);
+        else rod.position.lerpVectors(p0, pLift, L).addScaledVector(axis, out * S);
+      }
+      if (opening) return;
+      // the fold loosens as the rod leaves it, then straightens in flight
+      item.flatten?.(0.2 * seg(t, 150, 400) + 0.8 * Math.min(1, F / STRAIGHT));
+      if (F >= STRAIGHT) {
+        sound.open();
+        opening = item.open(600);
+      }
+    }, linear);
+    if (rod) {
+      item.slot.add(rod);
+      rod.position.copy(item.mount);
+      rod.quaternion.identity();
+    }
+    await opening;
     this.showControls();
     this.state = 'reading';
   }
@@ -201,40 +245,61 @@ export class Reader {
     this.state = 'busy';
     const item = this.held, root = item.root;
     this.hideControls();
+    sound.putBack();
 
-    // 1. close, re-centring as it narrows
-    const closed = this.heldPose(item, 0);
-    const pc = root.position.clone(), sc = root.scale.x;
-    await Promise.all([
-      item.close(),
-      tween(600, (k) => {
-        root.position.lerpVectors(pc, closed.position, k);
-        root.scale.setScalar(THREE.MathUtils.lerp(sc, closed.scale, k));
-      }),
-    ]);
-
-    // 2. travel back, the fold returning on the way
     this.camera.updateMatrixWorld();
     const q1 = this.slotQuat(item);
+    const lift = item.liftOffset ?? new THREE.Vector3();
     const pHome = this.slotPoint(item, new THREE.Vector3());
-    const pAbove = item.liftOffset ? this.slotPoint(item, item.liftOffset) : pHome;
+    const pHigh = this.slotPoint(item, lift.clone().add(new THREE.Vector3(0, item.dropHeight ?? 0, 0)));
     const p0 = root.position.clone(), q0 = root.quaternion.clone(), s0 = root.scale.clone();
-    await tween(760, (k) => {
-      root.position.lerpVectors(p0, pAbove, k);
-      root.position.y += Math.sin(Math.PI * k) * 0.03;
-      root.quaternion.slerpQuaternions(q0, q1, k);
-      root.scale.lerpVectors(s0, new THREE.Vector3(1, 1, 1), k);
-      item.flatten?.(1 - 0.8 * k);
-    });
-
-    // 3. settle back over the rod
-    if (item.liftOffset) {
-      await tween(360, (k) => {
-        root.position.lerpVectors(pAbove, pHome, k);
-        item.flatten?.(0.2 * (1 - k));
-      }, ease.inOut);
+    const one = new THREE.Vector3(1, 1, 1);
+    const rod = item.rod;
+    let axis = new THREE.Vector3(), out = 0;
+    if (rod) {
+      this.camera.attach(rod);
+      axis = new THREE.Vector3(1, 0, 0).applyQuaternion(rod.quaternion);
+      out = (Math.sign(item.slot.position.x) || 1) * (2 * (item.rodHalf ?? 0.2) + 0.06);
     }
+    const rodHome = rod?.position.clone();
+    const drop = pHome.clone().sub(pHigh);
 
+    // One timeline, the reverse of picking up, stages overlapping (ms):
+    //   0–650     the cover closes (item.close runs its own swing)
+    //   400–1100  the paper flies back to a point above its slot, high
+    //             enough to clear the papers below; its shadows fade in
+    //             as it comes back into the stand's light
+    //   800–1150  the paper folds over again, opening a fold for the rod
+    //   1000–1750 it drops in one unbroken motion to its slot, in front of
+    //             the papers above and behind those below
+    //   600–1100  the rod lifts off its blocks in one move, up to the
+    //             falling fold and out beside the bay
+    //   1100–1550 and slides straight into it, riding down inside the fold,
+    //             so it never shows through the sheet
+    const foldAtInsert = pHigh.clone().addScaledVector(drop, seg(1100, 1000, 1750));
+    const closing = item.close();
+    await tween(1750, (k) => {
+      const t = k * 1750;
+      const B = seg(t, 400, 1100), D = seg(t, 1000, 1750);
+      root.position.lerpVectors(p0, pHigh, B).addScaledVector(drop, D);
+      root.position.y += Math.sin(Math.PI * B) * 0.03;
+      root.quaternion.slerpQuaternions(q0, q1, B);
+      root.scale.lerpVectors(s0, one, B);
+      item.setShadowMix?.(seg(t, 800, 1100));
+      if (t >= 650) item.flatten?.(1 - seg(t, 800, 1150));
+      // rises straight to where the fold will be when it goes in, then
+      // follows the fold down
+      if (t < 1100) rod?.position.lerpVectors(rodHome, foldAtInsert, seg(t, 600, 1100)).addScaledVector(axis, out * seg(t, 600, 1100));
+      else rod?.position.copy(root.position).addScaledVector(axis, out * (1 - seg(t, 1100, 1550)));
+    }, linear);
+    await closing;
+
+    if (rod) {
+      item.slot.add(rod);
+      rod.position.copy(item.mount);
+      rod.quaternion.identity();
+    }
+    item.castShadows?.(true);
     item.slot.add(root);
     root.position.copy(item.mount);
     root.quaternion.identity();

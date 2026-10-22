@@ -11,8 +11,10 @@ import { tween, ease } from './anim.js';
 import { PAPER, paintCover, paintMagPage, paintNewsPage, paintNewsBack, loadImage } from './textures.js';
 
 export const MAG = { W: 0.21, H: 0.28, T: 0.006, C: 0.0012 };
-// tabloid page: W is the page width (spine to edge), H its height
-export const NEWS = { W: 0.29, H: 0.38 };
+// tabloid page: W is the page width (spine to edge), H its height. H runs
+// along the rod; the ladder's bays are wider (stands.js) so a paper can tip
+// on hover without touching the wood. W keeps the page's proportions.
+export const NEWS = { W: 0.308, H: 0.404 };
 
 let anisotropy = 4;
 export function setAnisotropy(n) { anisotropy = n; }
@@ -165,24 +167,46 @@ export class Magazine {
 // Picked up, the sheets straighten (a morph target) into a flat, closed
 // paper; the reader turns it upright with `readQuat`, so the rod runs down
 // the left spine like a library newspaper stick.
+// Lets a paper's shadows fade by a uniform (0 = unshadowed, 1 = fully):
+// a paper carried out of the sun's shadow box would otherwise show the box's
+// hard edge sweeping across it, so it fades its shadows out as it leaves.
+function fadeShadows(mat, uniform) {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.shadowMix = uniform;
+    const chunk = THREE.ShaderChunk.lights_fragment_begin
+      .replace(/\? (getShadow|getPointShadow)\(/g, '? mix( 1.0, $1(')
+      .replace(/\) : 1\.0;/g, '), shadowMix ) : 1.0;');
+    shader.fragmentShader = 'uniform float shadowMix;\n'
+      + shader.fragmentShader.replace('#include <lights_fragment_begin>', chunk);
+  };
+  mat.customProgramCacheKey = () => 'fadeShadows';
+}
+
 const SHEETS = 4;
-const DOWEL_R = 0.006;
+const DOWEL_R = 0.0045;
 
 function sheetGeometry(layer, W, H) {
   const outer = SHEETS - 1 - layer; // 0 = innermost sheet
-  const rHang = DOWEL_R + 0.0008 + outer * 0.0004;
+  const rHang = DOWEL_R + 0.0005 + outer * 0.0005;
+  // a constant gap between sheets, so the halves can close up below the
+  // rod without the sheets meeting (they would flicker through each other)
+  const gap = outer * 0.0005;
   const rFlat = 0.0004 + outer * 0.0005;
   // the outer sheets bow and curl the most, so inner sheets never push
   // through the printed outer one
-  const bow = 0.0018 + outer * 0.0005;  // sag away from the rod
+  const bow = 0.001 + outer * 0.0003;   // sag away from the rod
   const curl = 0.0035 + outer * 0.001;  // the free edge lifts a little
   const S = 28, A = 18, X = 18;         // segments: each half, the fold, across
+  // below the rod the two halves close up toward each other, as a folded
+  // sheet does under its own weight; this keeps a hanging paper thin enough
+  // to tuck behind the papers on the rungs below it
+  const taper = (f) => 0.35 + 0.65 * f * f; // 1 at the fold, 0.35 at the edge
 
   // path down the sheet: [hangY, hangZ, flatY, flatZ, u, half]; half 0 = front
   const path = [];
   for (let i = 0; i <= S; i++) {
     const f = i / S; // 0 at the free edge, 1 at the fold
-    path.push([-(1 - f) * W, rHang + bow * Math.sin(Math.PI * f) + curl * (1 - f) ** 3, -(1 - f) * W, rFlat, 1 - f, 0]);
+    path.push([-(1 - f) * W, (rHang - gap) * taper(f) + gap + bow * Math.sin(Math.PI * f) + curl * (1 - f) ** 3, -(1 - f) * W, rFlat, 1 - f, 0]);
   }
   for (let i = 1; i < A; i++) {
     const t = (Math.PI * i) / A;
@@ -190,7 +214,7 @@ function sheetGeometry(layer, W, H) {
   }
   for (let i = 0; i <= S; i++) {
     const g = i / S; // 0 at the fold, 1 at the free edge
-    path.push([-g * W, -(rHang + bow * 0.6 * Math.sin(Math.PI * g) + curl * 0.3 * g ** 3), -g * W, -rFlat, g, 1]);
+    path.push([-g * W, -((rHang - gap) * taper(1 - g) + gap + bow * 0.6 * Math.sin(Math.PI * g) + curl * 0.3 * g ** 3), -g * W, -rFlat, g, 1]);
   }
 
   const pos = [], flat = [], uv = [];
@@ -226,7 +250,7 @@ function sheetGeometry(layer, W, H) {
 }
 
 const defaultRod = {
-  half: 0.25, sleeveX: 0.19,
+  half: 0.25, sleeveX: 0.235, sleeveLen: 0.016,
   metal: new THREE.MeshStandardMaterial({ color: '#c9cccd', metalness: 1, roughness: 0.32 }),
   sleeve: new THREE.MeshStandardMaterial({ color: '#1c1c1c', roughness: 0.5 }),
 };
@@ -254,7 +278,11 @@ export class Newspaper {
     this.cache = new Map();
     this.mount = new THREE.Vector3(0, 0, 0);          // the slot sits on the rod's axis
     this.hoverLift = new THREE.Vector3(0, 0, 0);       // hover tips in place (applyHover)
-    this.liftOffset = new THREE.Vector3(0, 0.07, 0.05); // picking up lifts it off the rod first
+    // picking up lifts paper and rod straight up off the blocks first; going
+    // back, the paper is lowered in from dropHeight above that, so it slides
+    // in front of the papers above and behind the papers below
+    this.liftOffset = new THREE.Vector3(0, 0.08, 0);
+    this.dropHeight = NEWS.W * 0.9;
     this.readQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
     this.readFill = 0.8;
 
@@ -262,13 +290,13 @@ export class Newspaper {
     this.root.name = `newspaper_${data.id}`;
     this.rodHalf = rod.half;
 
-    // The steel rod and its sleeves stay on the stand when the paper is
-    // picked up; main.js adds this group to the slot beside the paper.
+    // The brass rod and its sleeves live on the stand. Picking the paper up
+    // lifts the rod too, then slides it out of the fold (reader.js).
     this.rod = new THREE.Group();
     this.rod.name = `rod_${data.id}`;
     this.rod.add(new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R, DOWEL_R, rod.half * 2, 24).rotateZ(Math.PI / 2), rod.metal));
     for (const s of [-1, 1]) {
-      const sl = new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R + 0.0022, DOWEL_R + 0.0022, 0.045, 20).rotateZ(Math.PI / 2), rod.sleeve);
+      const sl = new THREE.Mesh(new THREE.CylinderGeometry(DOWEL_R + 0.0022, DOWEL_R + 0.0022, rod.sleeveLen, 20).rotateZ(Math.PI / 2), rod.sleeve);
       sl.position.x = s * rod.sleeveX;
       this.rod.add(sl);
     }
@@ -276,7 +304,12 @@ export class Newspaper {
     // the folded sheets, draped over the rod; they straighten as a morph
     this.frontMat = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide, map: this.page(0) });
     this.backMat = new THREE.MeshStandardMaterial({ roughness: 0.95, side: THREE.DoubleSide, map: tex(paintNewsBack(data)) });
-    const inner = new THREE.MeshStandardMaterial({ color: '#e2dbcc', roughness: 0.95, side: THREE.DoubleSide });
+    // inner sheets are drawn pushed back in depth, so at a distance they never
+    // show through the printed outer sheet
+    const inner = new THREE.MeshStandardMaterial({
+      color: '#e2dbcc', roughness: 0.95, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 8,
+    });
     this.sheets = new THREE.Group();
     this.sheetMeshes = [];
     for (let i = 0; i < SHEETS; i++) {
@@ -310,6 +343,13 @@ export class Newspaper {
 
     markMeshes(this.root, this);
     markMeshes(this.rod, this);
+    // only the printed outer sheet casts shadows: the inner ones sit a
+    // millimetre behind it and would speckle it with shadow acne
+    this.castShadows(true);
+    this.shadowMix = { value: 1 };
+    const mats = new Set();
+    this.root.traverse((o) => { if (o.isMesh) [].concat(o.material).forEach((m) => mats.add(m)); });
+    mats.forEach((m) => fadeShadows(m, this.shadowMix));
   }
 
   get pageCount() { return this.data.pages.length; }
@@ -347,15 +387,25 @@ export class Newspaper {
     }
   }
 
+  // Only the printed outer sheet casts shadows, and only while the paper is
+  // on the stand: the inner sheets and the book's pages sit a millimetre
+  // apart, and shadows between them flicker as the paper straightens.
+  castShadows(on) {
+    this.sheetMeshes.forEach((m, i) => { m.castShadow = on && i === 0; });
+    this.book.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+  }
+
+  setShadowMix(v) { this.shadowMix.value = v; }
+
   // 0: draped over the rod; 1: straight and closed
   flatten(k) { for (const m of this.sheetMeshes) m.morphTargetInfluences[0] = k; }
 
   // straight sheets → book (they match exactly), then flip the cover open
-  async open() {
+  async open(ms = 750) {
     this.flatten(1);
     this.sheets.visible = false;
     this.book.visible = true;
-    await tween(750, (k) => { this.cover.rotation.x = -Math.PI * k; }, ease.inOut);
+    await tween(ms, (k) => { this.cover.rotation.x = -Math.PI * k; }, ease.inOut);
     this.spread = 1;
   }
 

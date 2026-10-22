@@ -129,10 +129,25 @@ export function makeMaterials() {
     hinoki: scanned('ash', { tint: '#fff1de', turn: true, normal: 0.5 }),
     // MDF board and base: a scanned smooth kraft board, darkened to MDF brown
     oak: scanned('mdf', { tint: '#9d9289', normal: 0.35 }), // desaturated toward real MDF
+    // maple posts, blocks and base: the same scan, paler and creamier, with
+    // the grain pressed flatter since maple is close-grained
+    // (a tint above 1 lifts the scan, which is darker and warmer than maple)
+    maple: scanned('ash', { tint: new THREE.Color(1.32, 1.26, 1.12), turn: true, normal: 0.3 }),
+    // clear glass back board, a little green through its thickness. Kept out
+    // of the shadow pass (stands.js) since clear glass barely shades.
+    glass: new THREE.MeshPhysicalMaterial({
+      color: '#ffffff', metalness: 0, roughness: 0.04, transmission: 1, thickness: 0.008, ior: 1.52,
+      attenuationColor: '#c8ddd2', attenuationDistance: 0.05, specularIntensity: 1,
+    }),
     // brushed steel for the newspaper rods: fine lengthwise streaks
     steel: new THREE.MeshStandardMaterial({
       color: '#bdb6a9', metalness: 1, roughness: 1, // gently tarnished
       roughnessMap: texture(range(noise(256, 53, [[4, 0.3], [256, 0.7]]), 0.3, 0.55), { repeat: [1, 8] }),
+    }),
+    // brushed, softly aged brass for the rods, with the same lengthwise streaks
+    brass: new THREE.MeshStandardMaterial({
+      color: '#d2ad62', metalness: 1, roughness: 1,
+      roughnessMap: texture(range(noise(256, 59, [[4, 0.3], [256, 0.7]]), 0.24, 0.46), { repeat: [1, 8] }),
     }),
     // dark zinc screws and washers
     iron: new THREE.MeshStandardMaterial({ color: '#4b4c4c', metalness: 0.85, roughness: 0.4 }),

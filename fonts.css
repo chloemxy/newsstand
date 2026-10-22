@@ -3,8 +3,17 @@
    as a free lookalike. Once licensed, drop the file in /fonts and uncomment
    this rule; style.css already lists the real name first.
 
+   The brand name is set in Libre Caslon Text (SIL Open Font License, see
+   assets/fonts/LibreCaslon-OFL.txt), loaded below.
+
    The newspaper and magazine pages painted inside the 3D scene use their
    own print faces (Old Standard TT, Fraunces), set in src/textures.js. */
+
+@font-face {
+  font-family: "Libre Caslon Text";
+  src: url("assets/fonts/LibreCaslonText-Regular.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
 
 /*
 @font-face {

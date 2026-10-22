@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>[Corner]</title>
+  <title>Corner</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,600&family=Old+Standard+TT:wght@400;700&display=swap">
@@ -22,22 +22,19 @@
   <canvas id="scene" tabindex="-1" aria-label="A newsstand with magazines and newspapers"></canvas>
 
   <header class="bar">
-    <h1>[Corner]</h1>
+    <h1>Corner</h1>
+    <button id="sound" type="button" class="btn ghost label" aria-pressed="true">Sound on</button>
   </header>
-
-  <section class="intro">
-    <h2>A newsstand you can read.</h2>
-    <p>Click a newspaper to pick it up, turn its pages, then put it back.</p>
-  </section>
 
   <nav class="index label" aria-label="Browse the stand">
     <details>
       <summary>Browse the stand</summary>
-      <ul id="index-list"></ul>
+      <div class="index-panel">
+        <p class="index-head"><span>On the stand</span><span id="index-count"></span></p>
+        <ol id="index-list"></ol>
+      </div>
     </details>
   </nav>
-
-  <div id="tip" class="tip label" role="tooltip" hidden></div>
 
   <div id="reader" class="reader" role="group" aria-label="Reading" hidden>
     <button id="reader-prev" type="button" class="btn ghost label" aria-label="Previous page">Back</button>
