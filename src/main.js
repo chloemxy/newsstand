@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { magazines, newspapers } from './content.js';
-import { loadFonts } from './textures.js';
+import { loadFonts, loadPrint } from './textures.js';
 import { Magazine, Newspaper, setAnisotropy } from './items.js';
 import { buildPlaceholder } from './stands.js';
 import { loadModel } from './model.js';
 import { Reader } from './reader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { setMaterialAnisotropy } from './materials.js';
+import { setMaterialAnisotropy, loadScans } from './materials.js';
 import { makePost } from './post.js';
 import { ContactShadow } from './contact-shadow.js';
 
@@ -17,7 +17,7 @@ const loading = document.getElementById('loading');
 const studio = CONFIG.look === 'studio';
 
 async function start() {
-  await loadFonts();
+  await Promise.all([loadFonts(), loadPrint()]);
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -27,6 +27,7 @@ async function start() {
   renderer.toneMappingExposure = 1.05;
   setAnisotropy(renderer.capabilities.getMaxAnisotropy());
   setMaterialAnisotropy(renderer.capabilities.getMaxAnisotropy());
+  await loadScans();
 
   const scene = new THREE.Scene();
   // studio: a seamless paper sweep, lighter at the top, with no horizon line
@@ -102,8 +103,13 @@ async function start() {
   function frameScene() {
     const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
     const d = Math.max(shot.span / 2 / tanH, shot.minWidth / 2 / (tanH * camera.aspect));
-    camera.position.copy(aim).addScaledVector(viewDir, d);
-    camera.lookAt(aim);
+    // on tall screens the view is taller than `span`: keep the bottom of the
+    // frame where it was (the base stays out of shot) and let the extra
+    // height show backdrop above the stand
+    const extra = Math.max(0, 2 * d * tanH - shot.span) / 2;
+    const target = aim.clone().add(new THREE.Vector3(0, extra, 0));
+    camera.position.copy(target).addScaledVector(viewDir, d);
+    camera.lookAt(target);
   }
 
   function resize() {

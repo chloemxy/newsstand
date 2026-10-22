@@ -219,7 +219,68 @@ function masthead(ctx, paper) {
   return y + 52;
 }
 
-// Old paper: yellowing that deepens toward the edges, and foxing spots.
+// Real print: CC0 photographs printed as halftone, and a scanned paper grain
+// over every page (see assets/tex/CREDITS.md). Loaded before painting.
+export const PHOTO_FILES = [
+  'abandoned_bakery', 'abandoned_slipway', 'art_studio', 'bell_tower',
+  'billiard_hall', 'binnenalster', 'cambridge', 'carpentry_shop_01',
+];
+const PRINT = { grain: null, photos: new Map() };
+
+export async function loadPrint() {
+  const jobs = [['grain', 'assets/tex/paper_grain.jpg'], ...PHOTO_FILES.map((n) => [n, `assets/photos/${n}.jpg`])];
+  await Promise.all(jobs.map(async ([k, url]) => {
+    try {
+      const img = await loadImage(url);
+      if (k === 'grain') PRINT.grain = img; else PRINT.photos.set(k, img);
+    } catch { /* fall back to the drawn photo and plain paper */ }
+  }));
+}
+
+// The paper's own photo on its front page; inner pages borrow one by seed.
+function photoFor(paper, index, seed) {
+  if (index === 0 && paper.photo && PRINT.photos.has(paper.photo)) return PRINT.photos.get(paper.photo);
+  const list = [...PRINT.photos.values()];
+  return list.length ? list[seed % list.length] : null;
+}
+
+// Prints a photo as a newspaper halftone: a 45° screen of ink dots whose
+// size follows the darkness of the picture.
+function halftone(ctx, img, x, y, w, h, cell = 4.5) {
+  const src = document.createElement('canvas');
+  src.width = Math.ceil(w); src.height = Math.ceil(h);
+  const sx = src.getContext('2d', { willReadFrequently: true });
+  const r = Math.max(w / img.width, h / img.height);
+  sx.drawImage(img, (w - img.width * r) / 2, (h - img.height * r) / 2, img.width * r, img.height * r);
+  const data = sx.getImageData(0, 0, src.width, src.height).data;
+  const lum = (px, py) => {
+    const i = (Math.min(src.height - 1, Math.max(0, py | 0)) * src.width + Math.min(src.width - 1, Math.max(0, px | 0))) * 4;
+    return (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
+  };
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  ctx.fillStyle = INK_NEWS;
+  const cx = w / 2, cy = h / 2, R = Math.hypot(w, h) / 2, c = Math.SQRT1_2;
+  for (let v = -R; v <= R; v += cell) {
+    for (let u = -R; u <= R; u += cell) {
+      const px = cx + (u - v) * c, py = cy + (u + v) * c; // rotate the screen 45°
+      if (px < -cell || py < -cell || px > w + cell || py > h + cell) continue;
+      let d = 1 - lum(px, py);
+      d = Math.min(1, Math.max(0, (d - 0.16) * 1.3)); // lighter, with a little more contrast
+      if (d < 0.03) continue;
+      ctx.beginPath(); ctx.arc(x + px, y + py, cell * 0.64 * Math.sqrt(d), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function printPhoto(ctx, paper, index, seed, x, y, w, h) {
+  const img = photoFor(paper, index, seed);
+  if (img) halftone(ctx, img, x, y, w, h); else drawPhoto(ctx, x, y, w, h, seed);
+}
+
+// Old paper: yellowing that deepens toward the edges, foxing spots, and
+// the scanned paper grain.
 function age(ctx, seed) {
   const r = seeded(seed);
   ctx.save();
@@ -232,6 +293,13 @@ function age(ctx, seed) {
     const x = r() * NEWS_W, y = r() * NEWS_H, rad = 2 + r() * r() * 16;
     ctx.fillStyle = `rgba(150,108,55,${0.07 + r() * 0.13})`;
     ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+  }
+  // the scanned recycled-paper grain, a different crop on every page
+  if (PRINT.grain) {
+    ctx.globalAlpha = 0.7;
+    const g = PRINT.grain, ox = -r() * g.width * 0.3, oy = -r() * g.height * 0.3;
+    ctx.drawImage(g, ox, oy, NEWS_W * 1.35, NEWS_H * 1.35);
+    ctx.globalAlpha = 1;
   }
   ctx.restore();
 }
@@ -275,7 +343,7 @@ export function paintNewsPage(paper, page, index, img) {
     ctx.fillRect(M, M + 26, W, 2);
     ctx.font = `700 46px ${F.news}`;
     y = wrap(ctx, page.headline, M, M + 90, W, 50, 3);
-    drawPhoto(ctx, M, y, W, 330, seed);
+    printPhoto(ctx, paper, index, seed, M, y, W, 330);
     columns(ctx, `${page.body} ${copy}`, M, y + 350, W, NEWS_H - M - (y + 350), 3);
     age(ctx, seed);
     return c;
@@ -297,7 +365,7 @@ export function paintNewsPage(paper, page, index, img) {
   } else {
     ctx.fillStyle = INK_NEWS; ctx.font = `700 46px ${F.news}`;
     y = wrap(ctx, page.headline, M, y + 44, W, 50, 3);
-    drawPhoto(ctx, M, y, W, 360, seed);
+    printPhoto(ctx, paper, index, seed, M, y, W, 360);
     ctx.font = `italic 400 13px ${F.news}`; ctx.fillStyle = '#4a4640';
     ctx.fillText(`${page.body.split('.')[0]}.`, M, y + 380);
     columns(ctx, copy, M, y + 396, W, NEWS_H - M - (y + 396), 3, 14);

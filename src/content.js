@@ -83,9 +83,10 @@ export const magazines = [
 //   quote:        one huge condensed headline, like a poster
 //   photo:        a serif headline over a large black-and-white photograph
 //   illustration: a headline beside a flat colour illustration (accent colour)
+// `photo` names a CC0 photograph in assets/photos, printed as halftone.
 export const newspapers = [
   {
-    id: 'morning-post', title: 'The Morning Post', date: 'Wednesday 21 October 2026', style: 'photo',
+    id: 'morning-post', photo: 'cambridge', title: 'The Morning Post', date: 'Wednesday 21 October 2026', style: 'photo',
     pages: [
       { kicker: 'Front page', headline: 'City approves night market on the old tram depot', body: 'The council voted seven to two last night to open the depot to traders on Fridays and Saturdays from spring.' },
       { kicker: 'Local', headline: 'Bakery queue returns after six-month refit', body: 'Regulars were waiting at 6 a.m. for the first loaves from the new oven.' },
@@ -93,7 +94,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'evening-ledger', title: 'Evening Ledger', date: 'Wednesday 21 October 2026', style: 'illustration', accent: '#3f9a4a',
+    id: 'evening-ledger', photo: 'binnenalster', title: 'Evening Ledger', date: 'Wednesday 21 October 2026', style: 'illustration', accent: '#3f9a4a',
     pages: [
       { kicker: 'Front page', headline: 'Ferry service extended to the outer islands', body: 'Two extra crossings a day start next month, with bicycles carried free.' },
       { kicker: 'Business', headline: 'Corner shops report their best quarter in years', body: 'Owners credit late opening hours and a return to local suppliers.' },
@@ -101,7 +102,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'weekly-courier', title: 'The Weekly Courier', date: 'Week 43 · 2026', style: 'photo',
+    id: 'weekly-courier', photo: 'bell_tower', title: 'The Weekly Courier', date: 'Week 43 · 2026', style: 'photo',
     pages: [
       { kicker: 'Front page', headline: 'Library stays open until midnight for exam season', body: 'Students asked, the board agreed, and the coffee machine has been serviced.' },
       { kicker: 'Culture', headline: 'Open-air cinema plans winter screenings', body: 'Blankets provided. The first film is chosen by public vote.' },
@@ -109,7 +110,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'harbour-gazette', title: 'Harbour Gazette', date: 'Thursday 22 October 2026', style: 'quote',
+    id: 'harbour-gazette', photo: 'abandoned_slipway', title: 'Harbour Gazette', date: 'Thursday 22 October 2026', style: 'quote',
     pages: [
       { kicker: 'Front page', headline: '“The pier is open again, mind the new railings”', body: 'Anglers were back on the boards by noon. The new railings are a foot higher.' },
       { kicker: 'Tides', headline: 'This week’s tide table', body: 'Springs on Saturday, with the lowest water just after dawn.' },
@@ -117,7 +118,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'market-daily', title: 'Market Daily', date: 'Thursday 22 October 2026', style: 'illustration', accent: '#d8572a',
+    id: 'market-daily', photo: 'abandoned_bakery', title: 'Market Daily', date: 'Thursday 22 October 2026', style: 'illustration', accent: '#d8572a',
     pages: [
       { kicker: 'Front page', headline: 'Apple harvest is the best in a decade', body: 'Growers say a dry summer and a late frost made for small, sweet fruit.' },
       { kicker: 'Prices', headline: 'What a basket costs this week', body: 'Bread steady, eggs down, coffee up again.' },
@@ -125,7 +126,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'city-letter', title: 'The City Letter', date: 'October 2026', style: 'photo',
+    id: 'city-letter', photo: 'art_studio', title: 'The City Letter', date: 'October 2026', style: 'photo',
     pages: [
       { kicker: 'Front page', headline: 'Twelve studios open their doors for one weekend', body: 'Printers, potters and a type foundry let the public in to watch them work.' },
       { kicker: 'Interview', headline: 'The last hot-metal printer in town', body: 'He still sets the wedding invitations by hand, letter by letter.' },
@@ -133,7 +134,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'studio-review', title: 'Studio Review', date: 'Autumn 2026', style: 'illustration', accent: '#2f6fb3',
+    id: 'studio-review', photo: 'art_studio', title: 'Studio Review', date: 'Autumn 2026', style: 'illustration', accent: '#2f6fb3',
     pages: [
       { kicker: 'Front page', headline: 'Vectors and more vectors', body: 'Why a lettering studio went back to pencil before going back to the screen.' },
       { kicker: 'Process', headline: 'An attempt to draw every day', body: 'One illustrator, one sketchbook, three hundred and sixty-five small drawings.' },
@@ -141,7 +142,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'northern-times', title: 'Northern Times', date: 'Friday 23 October 2026', style: 'photo',
+    id: 'northern-times', photo: 'billiard_hall', title: 'Northern Times', date: 'Friday 23 October 2026', style: 'photo',
     pages: [
       { kicker: 'Front page', headline: 'Have you seen the new reading room?', body: 'The old post office reopens as a reading room with forty desks and long hours.' },
       { kicker: 'Outdoors', headline: 'First snow on the high pass', body: 'The road stays open for now; chains are advised after dark.' },
@@ -149,7 +150,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'the-letterbox', title: 'The Letterbox', date: 'For the month of October', style: 'quote',
+    id: 'the-letterbox', photo: 'carpentry_shop_01', title: 'The Letterbox', date: 'For the month of October', style: 'quote',
     pages: [
       { kicker: 'Front page', headline: '“Let’s aim to get all things done and dusted by 19 December”', body: 'A month-long plan from the editors, with lists, deadlines and one long lunch.' },
       { kicker: 'Process', headline: 'Mind-maps, monsters and other drafts', body: 'Every idea for this issue, before most of them were thrown away.' },
@@ -157,7 +158,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'river-bulletin', title: 'River Bulletin', date: 'Saturday 24 October 2026', style: 'photo',
+    id: 'river-bulletin', photo: 'abandoned_slipway', title: 'River Bulletin', date: 'Saturday 24 October 2026', style: 'photo',
     pages: [
       { kicker: 'Front page', headline: 'Old swing bridge turns again after forty years', body: 'Engineers greased the gears by hand; the first barge through was carrying apples.' },
       { kicker: 'Community', headline: 'Volunteers clear the towpath', body: 'Sixty people, two skips and a lot of bramble.' },
@@ -165,7 +166,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'saturday-sheet', title: 'The Saturday Sheet', date: 'Weekend edition', style: 'quote',
+    id: 'saturday-sheet', photo: 'cambridge', title: 'The Saturday Sheet', date: 'Weekend edition', style: 'quote',
     pages: [
       { kicker: 'Front page', headline: '“Slow down, the shop is open all afternoon”', body: 'The hardware store on Mill Lane goes back to half-day closing, and nobody minds.' },
       { kicker: 'Weekend', headline: 'Ten walks under five miles', body: 'Each one ends near a bakery.' },
@@ -173,7 +174,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'garden-post', title: 'Garden Post', date: 'Autumn 2026', style: 'illustration', accent: '#b8862f',
+    id: 'garden-post', photo: 'abandoned_bakery', title: 'Garden Post', date: 'Autumn 2026', style: 'illustration', accent: '#b8862f',
     pages: [
       { kicker: 'Front page', headline: 'Plant your bulbs before the first frost', body: 'Tulips deep, crocuses shallow, and daffodils wherever the squirrels are not.' },
       { kicker: 'Allotments', headline: 'A waiting list three years long', body: 'The council promises twenty new plots by next spring.' },
@@ -181,7 +182,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'station-news', title: 'Station News', date: 'Monday 26 October 2026', style: 'photo',
+    id: 'station-news', photo: 'binnenalster', title: 'Station News', date: 'Monday 26 October 2026', style: 'photo',
     pages: [
       { kicker: 'Front page', headline: 'Clock tower restored to the minute', body: 'After a year of repairs the station clock chimes again, and it is right.' },
       { kicker: 'Travel', headline: 'Timetable changes from November', body: 'An earlier first train and a later last one on Fridays.' },
@@ -189,7 +190,7 @@ export const newspapers = [
     ],
   },
   {
-    id: 'print-quarterly', title: 'Print Quarterly', date: 'Issue 12', style: 'illustration', accent: '#c4433a',
+    id: 'print-quarterly', photo: 'carpentry_shop_01', title: 'Print Quarterly', date: 'Issue 12', style: 'illustration', accent: '#c4433a',
     pages: [
       { kicker: 'Front page', headline: 'Ink, paper and patience', body: 'A visit to a letterpress studio where every page is pulled by hand.' },
       { kicker: 'Workshop', headline: 'Mixing a perfect red', body: 'Three parts warm, one part cool, and a drop of black.' },

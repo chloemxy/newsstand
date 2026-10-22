@@ -85,55 +85,37 @@ function range(canvas, lo, hi) {
   return c;
 }
 
-// Wood grain with the fibres running along v (down the length of a beam).
-// UVs are scaled to real size in stands.js, so one tile is 25 × 100 cm.
-function woodGrain(base, dark, seed, ringPx = 26) {
-  const W = 512, H = 1024, rand = rng(seed);
-  const a = new THREE.Color(base), b = new THREE.Color(dark);
-  // long fibre streaks: smoothed random value per column
-  const streak = new Float32Array(W);
-  let v = rand();
-  for (let x = 0; x < W; x++) { v += (rand() - 0.5) * 0.35; v = Math.min(1, Math.max(0, v)); streak[x] = v; }
-  const p1 = rand() * 6, p2 = rand() * 6;
-  const c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const ctx = c.getContext('2d');
-  const img = ctx.createImageData(W, H);
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const warp = 16 * Math.sin(y * 0.005 + p1) + 7 * Math.sin(y * 0.017 + x * 0.011 + p2);
-      const t = (x + warp) / ringPx;
-      const ring = Math.pow(0.5 + 0.5 * Math.sin(t * Math.PI * 2), 8);
-      const k = Math.min(1, ring * 0.32 + streak[x] * 0.2 + (rand() - 0.5) * 0.05);
-      const i = (y * W + x) * 4;
-      img.data[i] = (a.r + (b.r - a.r) * k) * 255;
-      img.data[i + 1] = (a.g + (b.g - a.g) * k) * 255;
-      img.data[i + 2] = (a.b + (b.b - a.b) * k) * 255;
-      img.data[i + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return c;
+// Scanned CC0 maps (see assets/tex/CREDITS.md), loaded once before the
+// scene is built so nothing pops in.
+const SCANS = {
+  ashDiff: 'assets/tex/ash_diff.jpg', ashRough: 'assets/tex/ash_rough.jpg', ashNor: 'assets/tex/ash_nor.jpg',
+  mdfDiff: 'assets/tex/mdf_diff.jpg', mdfRough: 'assets/tex/mdf_rough.jpg', mdfNor: 'assets/tex/mdf_nor.jpg',
+};
+const scans = {};
+
+export async function loadScans() {
+  const loader = new THREE.TextureLoader();
+  await Promise.all(Object.entries(SCANS).map(async ([k, url]) => {
+    const t = await loader.loadAsync(url);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = anisotropy;
+    if (k.endsWith('Diff')) t.colorSpace = THREE.SRGBColorSpace;
+    scans[k] = t;
+  }));
 }
 
-function grey(canvas) {
-  const c = document.createElement('canvas');
-  c.width = canvas.width; c.height = canvas.height;
-  const ctx = c.getContext('2d');
-  ctx.filter = 'grayscale(1)';
-  ctx.drawImage(canvas, 0, 0);
-  return c;
-}
-
-function wood(base, dark, seed, { roughness = [0.45, 0.75], ring } = {}) {
-  const grain = woodGrain(base, dark, seed, ring);
-  return new THREE.MeshPhysicalMaterial({
-    map: texture(grain, { srgb: true }),
-    roughness: 1,
-    roughnessMap: texture(range(grey(grain), roughness[0], roughness[1])),
-    bumpMap: texture(grey(grain)),
-    bumpScale: 0.35,
-    sheen: 0.25, sheenRoughness: 0.6, sheenColor: new THREE.Color('#fff4e2'), // oiled finish
+// A scanned material. `turn` rotates the maps a quarter turn so the grain
+// runs along v, down the length of a beam (stands.js scales UVs to metres).
+function scanned(prefix, { tint = '#ffffff', turn = false, normal = 0.6, rough = 1 } = {}) {
+  const maps = ['Diff', 'Rough', 'Nor'].map((m) => {
+    const t = scans[prefix + m].clone();
+    if (turn) { t.center.set(0.5, 0.5); t.rotation = Math.PI / 2; }
+    t.needsUpdate = true;
+    return t;
+  });
+  return new THREE.MeshStandardMaterial({
+    color: tint, map: maps[0], roughness: rough, roughnessMap: maps[1],
+    normalMap: maps[2], normalScale: new THREE.Vector2(normal, normal),
   });
 }
 
@@ -141,14 +123,11 @@ export function makeMaterials() {
   const fine = noise(256, 23, [[32, 0.5], [128, 0.3], [256, 0.2]]);
 
   return {
-    // pale pine for posts, blocks and rods (key kept as `hinoki`)
-    hinoki: wood('#e6cfa8', '#cdaa7c', 31, { ring: 16 }), // lightly honey-aged
-    // MDF for the back board and base: flat brown, a fine fibre speckle, no grain
-    oak: new THREE.MeshStandardMaterial({
-      map: texture(wornColour('#7d5a3b', 41, { mottle: 0.07, size: 512 }), { srgb: true, repeat: [3, 3] }),
-      roughness: 0.88,
-      bumpMap: texture(fine, { repeat: [8, 8] }), bumpScale: 0.25,
-    }),
+    // pine posts, blocks and rods: scanned ash veneer, warmed to pine
+    // (key kept as `hinoki`)
+    hinoki: scanned('ash', { tint: '#ffe6c2', turn: true, normal: 0.5 }),
+    // MDF board and base: a scanned smooth kraft board, darkened to MDF brown
+    oak: scanned('mdf', { tint: '#b98f68', normal: 0.35 }),
     // brushed steel for the newspaper rods: fine lengthwise streaks
     steel: new THREE.MeshStandardMaterial({
       color: '#bdb6a9', metalness: 1, roughness: 1, // gently tarnished

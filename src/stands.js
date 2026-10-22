@@ -10,7 +10,7 @@ import { makeMaterials } from './materials.js';
 
 const deg = THREE.MathUtils.degToRad;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const TILE = { u: 0.25, v: 1 }; // metres covered by one tile of the grain texture
+const TILE = { u: 0.45, v: 0.45 }; // metres covered by one tile of a scanned texture
 
 // Collects geometry per material and merges it, so every board, block and
 // dowel of a stand draws as a handful of meshes. UVs are scaled to real
