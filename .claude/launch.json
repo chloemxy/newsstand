@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "newsstand",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4517"],
+      "port": 4517,
+      "autoPort": false
+    }
+  ]
+}

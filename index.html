@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Corner Kiosk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,600&family=Old+Standard+TT:wght@400;700&family=UnifrakturMaguntia&display=swap">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="scene" tabindex="-1" aria-label="A newsstand with magazines and newspapers"></canvas>
+
+  <header class="bar">
+    <h1>Corner Kiosk</h1>
+    <p class="hint">Drag to look around. Click a magazine or newspaper to pick it up.</p>
+  </header>
+
+  <nav class="index" aria-label="Browse the stand">
+    <details>
+      <summary>Browse the stand</summary>
+      <ul id="index-list"></ul>
+    </details>
+  </nav>
+
+  <div id="tip" class="tip" role="tooltip" hidden></div>
+
+  <aside id="reader" class="reader" aria-labelledby="reader-title" hidden>
+    <header>
+      <p id="reader-kind" class="eyebrow"></p>
+      <h2 id="reader-title"></h2>
+      <p id="reader-meta" class="meta"></p>
+    </header>
+    <div id="reader-pages" class="pages" aria-live="polite"></div>
+    <footer>
+      <div class="pager">
+        <button id="reader-prev" type="button" class="btn ghost" aria-label="Previous page">Previous</button>
+        <span id="reader-count" class="count"></span>
+        <button id="reader-next" type="button" class="btn ghost" aria-label="Next page">Next</button>
+      </div>
+      <button id="reader-close" type="button" class="btn">Put it back</button>
+      <p class="keys">Arrow keys turn pages · Esc puts it back</p>
+    </footer>
+  </aside>
+
+  <div id="loading" class="loading"><p>Stocking the shelves…</p></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
